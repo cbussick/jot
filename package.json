@@ -1,0 +1,19 @@
+{
+  "name": "sticky-notes-app",
+  "version": "1.0.0",
+  "description": "jot. responsive screen design prototype",
+  "private": true,
+  "scripts": {
+    "dev": "python3 -m http.server 4273 --bind 0.0.0.0",
+    "test": "playwright test",
+    "screenshots": "node scripts/screenshots.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0"
+  }
+}

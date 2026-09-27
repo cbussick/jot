@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F7F8FA">
+  <title>jot. — Your notes</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/manrope-regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to notes</a>
+  <header class="app-header">
+    <a class="brand" href="./" aria-label="jot home"><span class="brand-mark" aria-hidden="true"><i></i><i></i></span><span>jot<span class="brand-dot">.</span></span></a>
+    <search class="search-box"><span data-icon="search"></span><input id="search" type="search" placeholder="Find a little something…" aria-label="Search notes"><kbd>/</kbd></search>
+    <button class="sync-button" id="sync-button"><span data-icon="offline"></span><span>Not connected</span></button>
+  </header>
+
+  <main id="main" class="workspace">
+    <section class="page-heading" aria-labelledby="page-title">
+      <h1 id="page-title">Your notes</h1>
+    </section>
+    <div class="capture-bar">
+      <button class="capture-text" data-action="new"><span class="capture-pencil" data-icon="pen"></span><span>A thought worth keeping…</span></button>
+      <span class="capture-divider"></span><button class="image-capture" data-action="image"><span data-icon="image"></span><span>Add an image</span></button>
+    </div>
+    <div class="board-toolbar"><div class="board-label">All notes <span id="note-count">12</span></div><span class="sort-label"><span data-icon="sort"></span>Newest first</span></div>
+    <section id="pinned-section" class="note-section" hidden>
+      <h2 class="note-section-heading">Pinned</h2>
+      <ul class="note-board" id="pinned-board" aria-label="Pinned notes" role="list"></ul>
+    </section>
+    <section id="other-section" class="note-section">
+      <h2 id="other-heading" class="note-section-heading" hidden>Other notes</h2>
+      <ul class="note-board" id="note-board" aria-label="Other notes" role="list"></ul>
+    </section>
+    <section id="empty-state" class="empty-state" hidden><span data-icon="search"></span><h2>Nothing here just yet.</h2><p>Try another search, or make a little note.</p><button class="secondary-button" id="clear-search">Clear search</button></section>
+  </main>
+  <nav class="mobile-capture" aria-label="Create a note"><button data-action="image" aria-label="Add an image"><span data-icon="image"></span></button><span></span><button data-action="new"><span data-icon="plus"></span>New note</button></nav>
+
+  <dialog id="editor" class="editor-dialog" aria-labelledby="editor-heading">
+    <form id="note-form">
+      <header class="editor-header"><span id="editor-heading">A little note</span><div class="editor-header-actions"><button type="button" class="editor-pin pin-toggle" id="pin-note" aria-label="Pin note" aria-pressed="false"><span data-icon="pin"></span><span>Pin</span></button><button type="button" class="icon-button" id="close-editor" aria-label="Close note"><span data-icon="x"></span></button></div></header>
+      <div id="editor-images" class="editor-images"></div>
+      <div class="editor-fields"><label class="sr-only" for="note-title">Title</label><input id="note-title" placeholder="Title" maxlength="160"><label class="sr-only" for="note-body">Note</label><textarea id="note-body" placeholder="Start anywhere…" maxlength="20000"></textarea></div>
+      <p id="editor-error" class="editor-error" role="alert"></p>
+      <footer class="editor-footer">
+        <div class="editor-tools"><button type="button" class="icon-button" id="attach-image" aria-label="Attach an image"><span data-icon="image"></span></button><fieldset class="color-picker"><legend class="sr-only">Note color</legend><label class="swatch paper"><input type="radio" name="color" value="paper" checked aria-label="Paper"></label><label class="swatch butter"><input type="radio" name="color" value="butter" aria-label="Butter"></label><label class="swatch mint"><input type="radio" name="color" value="mint" aria-label="Mint"></label><label class="swatch lilac"><input type="radio" name="color" value="lilac" aria-label="Lilac"></label><label class="swatch peach"><input type="radio" name="color" value="peach" aria-label="Peach"></label></fieldset></div>
+        <div class="editor-actions"><button type="button" class="icon-button delete-button" id="delete-note" aria-label="Delete note"><span data-icon="trash"></span></button><button type="submit" class="primary-button">Save note</button></div>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="confirm-dialog" class="small-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title">Delete this note?</h2><p>This is permanent. There’s no trash to come back to.</p><div class="dialog-actions"><button class="secondary-button" id="cancel-delete">Keep note</button><button class="danger-button" id="confirm-delete">Delete note</button></div></dialog>
+  <dialog id="discard-dialog" class="small-dialog" aria-labelledby="discard-title"><h2 id="discard-title">Leave without saving?</h2><p>Your changes to this note will be lost.</p><div class="dialog-actions"><button class="secondary-button" id="keep-editing">Keep editing</button><button class="danger-button" id="discard-changes">Discard changes</button></div></dialog>
+  <dialog id="sync-dialog" class="small-dialog sync-dialog" aria-labelledby="sync-title"><div class="sync-illustration" data-icon="offline"></div><h2 id="sync-title">Not connected</h2><p>Device sync isn’t available yet. Notes stay in this tab until you refresh or close it.</p><button id="close-sync" class="primary-button">Got it</button></dialog>
+  <input id="image-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+  <div id="toast" class="toast" role="status"></div>
+</body>
+</html>
