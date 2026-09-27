@@ -1,0 +1,108 @@
+import * as stylex from '@stylexjs/stylex';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { NoteColor } from '../../shared/contracts';
+import { styles } from '../app.stylex';
+import type { LocalImage, LocalNote } from '../local-store';
+import { LocalPhoto } from './NoteBoard';
+import { Icon } from './Icon';
+
+const colors: NoteColor[] = ['paper', 'butter', 'mint', 'lilac', 'peach'];
+
+export type EditorValue = {
+  id?: string; title: string; body: string; color: NoteColor; pinned: boolean;
+  retainedImages: LocalImage[]; newImages: File[]; version?: number; createdAt?: string;
+};
+
+export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: {
+  note?: LocalNote; initialImages?: File[]; onSave: (value: EditorValue) => Promise<void>;
+  onDelete: (note: LocalNote) => Promise<void>; onClose: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const discardDialog = useRef<HTMLDialogElement>(null);
+  const deleteDialog = useRef<HTMLDialogElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const [title, setTitle] = useState(note?.title ?? '');
+  const [body, setBody] = useState(note?.body ?? '');
+  const [color, setColor] = useState<NoteColor>(note?.color ?? 'paper');
+  const [pinned, setPinned] = useState(note?.pinned ?? false);
+  const [retainedImages, setRetainedImages] = useState(note?.images ?? []);
+  const [newImages, setNewImages] = useState<File[]>(initialImages);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const initial = useRef(snapshot({ title, body, color, pinned, retainedImages, newImages }));
+  const dirty = initial.current !== snapshot({ title, body, color, pinned, retainedImages, newImages });
+
+  useEffect(() => {
+    dialog.current?.showModal();
+    return () => dialog.current?.close();
+  }, []);
+  const requestClose = () => dirty ? discardDialog.current?.showModal() : onClose();
+  const addFiles = (files: FileList | null) => {
+    if (!files?.length) return;
+    const accepted: File[] = [];
+    for (const file of files) {
+      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+        setError('Choose a JPG, PNG, WebP or GIF under 10 MB.');
+      } else accepted.push(file);
+    }
+    if (retainedImages.length + newImages.length + accepted.length > 6) return setError('Up to 6 images per note.');
+    setNewImages(current => [...current, ...accepted]);
+  };
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const cleanTitle = title.trim();
+    const cleanBody = body.trim();
+    if (!cleanTitle && !cleanBody && retainedImages.length + newImages.length === 0) return setError('Add some text or an image first.');
+    setSaving(true); setError('');
+    try {
+      await onSave({ id: note?.id, title: cleanTitle, body: cleanBody, color, pinned, retainedImages, newImages, version: note?.version, createdAt: note?.createdAt });
+      onClose();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not save this note.');
+      setSaving(false);
+    }
+  };
+  return <>
+    <dialog ref={dialog} aria-labelledby="editor-heading" onCancel={event => { event.preventDefault(); requestClose(); }} {...stylex.props(styles.dialog, styles.editor, styles[color])}>
+      <form onSubmit={submit} {...stylex.props(styles.editorForm)}>
+        <header {...stylex.props(styles.editorHeader)}><span id="editor-heading">{note ? 'A little note' : 'Something worth keeping'}</span><div {...stylex.props(styles.headerActions)}>
+          <button type="button" aria-label={pinned ? 'Unpin note' : 'Pin note'} aria-pressed={pinned} onClick={() => setPinned(value => !value)} {...stylex.props(styles.pinText, pinned && styles.pinned)}><Icon name="pin" width={18}/><span>{pinned ? 'Pinned' : 'Pin'}</span></button>
+          <button type="button" aria-label="Close note" onClick={requestClose} {...stylex.props(styles.iconButton)}><Icon name="x"/></button>
+        </div></header>
+        {(retainedImages.length > 0 || newImages.length > 0) && <div {...stylex.props(styles.editorImages)}>
+          {retainedImages.map((image, index) => <div key={image.id} {...stylex.props(styles.editorImage)}><LocalPhoto image={image} className={stylex.props(styles.editorPhoto).className}/><button type="button" aria-label={`Remove image ${index + 1}`} onClick={() => setRetainedImages(images => images.filter(item => item.id !== image.id))} {...stylex.props(styles.imageRemove)}><Icon name="x"/></button></div>)}
+          {newImages.map((file, index) => <NewPhoto key={`${file.name}-${file.lastModified}-${index}`} file={file} index={retainedImages.length + index} onRemove={() => setNewImages(files => files.filter((_, position) => position !== index))}/>) }
+        </div>}
+        <div {...stylex.props(styles.editorFields)}>
+          <label className="sr-only" htmlFor="note-title">Title</label><input id="note-title" maxLength={160} placeholder="Title" value={title} onChange={event => setTitle(event.target.value)} {...stylex.props(styles.titleInput)}/>
+          <label className="sr-only" htmlFor="note-body">Note</label><textarea id="note-body" maxLength={20_000} placeholder="Start anywhere…" value={body} onChange={event => setBody(event.target.value)} autoFocus {...stylex.props(styles.bodyInput)}/>
+        </div>
+        <p role="alert" {...stylex.props(styles.error)}>{error}</p>
+        <footer {...stylex.props(styles.editorFooter)}><div {...stylex.props(styles.tools)}>
+          <button type="button" aria-label="Attach an image" onClick={() => input.current?.click()} {...stylex.props(styles.iconButton)}><Icon name="image"/></button>
+          <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden onChange={event => { addFiles(event.target.files); event.target.value = ''; }}/>
+          <fieldset {...stylex.props(styles.colorPicker)}><legend className="sr-only">Note color</legend>{colors.map(option => <label key={option} {...stylex.props(styles.swatch, styles[option], option === color && styles.swatchSelected)}><input type="radio" name="color" value={option} checked={option === color} onChange={() => setColor(option)} aria-label={option[0].toUpperCase() + option.slice(1)} {...stylex.props(styles.radio)}/></label>)}</fieldset>
+        </div><div {...stylex.props(styles.actions)}>{note && <button type="button" aria-label="Delete note" onClick={() => deleteDialog.current?.showModal()} {...stylex.props(styles.iconButton, styles.deleteIcon)}><Icon name="trash"/></button>}<button type="submit" disabled={saving} {...stylex.props(styles.primary)}>{saving ? 'Saving…' : 'Save note'}</button></div></footer>
+      </form>
+    </dialog>
+    <ConfirmDialog ref={discardDialog} title="Leave without saving?" copy="Your changes to this note will be lost." cancel="Keep editing" confirm="Discard changes" onConfirm={onClose}/>
+    <ConfirmDialog ref={deleteDialog} title="Delete this note?" copy="This is permanent. There’s no trash to come back to." cancel="Keep note" confirm="Delete note" onConfirm={() => note && onDelete(note)}/>
+  </>;
+}
+
+function NewPhoto({ file, index, onRemove }: { file: File; index: number; onRemove: () => void }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return <div {...stylex.props(styles.editorImage)}><img src={url} alt={file.name} {...stylex.props(styles.editorPhoto)}/><button type="button" aria-label={`Remove image ${index + 1}`} onClick={onRemove} {...stylex.props(styles.imageRemove)}><Icon name="x"/></button></div>;
+}
+
+function ConfirmDialog({ ref, title, copy, cancel, confirm, onConfirm }: {
+  ref: React.RefObject<HTMLDialogElement | null>; title: string; copy: string; cancel: string; confirm: string; onConfirm: () => void | Promise<void>;
+}) {
+  const headingId = `${confirm.toLowerCase().replaceAll(' ', '-')}-heading`;
+  return <dialog ref={ref} aria-labelledby={headingId} {...stylex.props(styles.dialog, styles.smallDialog)}><h2 id={headingId} {...stylex.props(styles.dialogTitle)}>{title}</h2><p {...stylex.props(styles.dialogCopy)}>{copy}</p><div {...stylex.props(styles.dialogActions)}><button type="button" onClick={() => ref.current?.close()} {...stylex.props(styles.secondary)}>{cancel}</button><button type="button" onClick={() => { ref.current?.close(); void onConfirm(); }} {...stylex.props(styles.danger)}>{confirm}</button></div></dialog>;
+}
+
+function snapshot(value: { title: string; body: string; color: NoteColor; pinned: boolean; retainedImages: LocalImage[]; newImages: File[] }) {
+  return JSON.stringify({ ...value, retainedImages: value.retainedImages.map(image => image.id), newImages: value.newImages.map(file => [file.name, file.size, file.lastModified]) });
+}

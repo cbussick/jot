@@ -1,4 +1,8 @@
 node_modules/
+dist/
+data/
+.auth/
+.test-data/
 test-results/
 playwright-report/
 .env

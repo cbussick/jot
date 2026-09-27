@@ -1,51 +1,113 @@
 # jot.
 
-A responsive screen-design prototype for a minimal, self-hosted Google Keep alternative. Text and images, without the organizational overhead.
+A small, private, self-hosted notes app for text and images. It is designed for one owner and works across desktop, tablet, and phone.
 
-## Preview
+## Stack
 
-```sh
+- React, TypeScript, Vite, StyleX, and TanStack Query
+- Express and TypeScript
+- SQLite for notes, sessions, and image metadata
+- Filesystem storage for image bytes
+- Zod parsing at environment, HTTP, browser-storage, and API boundaries
+- IndexedDB and a service worker for local-first editing and offline startup
+- Docker Compose for deployment
+
+## What it supports
+
+- Create, edit, search, pin, color, and permanently delete notes
+- Up to six JPG, PNG, WebP, or GIF images per note
+- Local-first saving with an honest sync status
+- Offline startup after the first successful visit
+- Offline note creation and editing; queued changes sync while jot. is open and connected
+- Conflict protection that preserves the local edit as a conflict copy
+- Installable PWA on supported browsers and operating systems
+- One owner password with revocable, server-side sessions
+
+The app deliberately has no labels, checklists, archive, reminders, trash, sharing, or multi-user administration.
+
+## Run locally
+
+Requirements: Node.js 24+ and npm.
+
+```bash
+npm install
 npm run dev
 ```
 
-Requires Python 3. Opens a static development server on port **4273**, listening on all interfaces. No build step or runtime npm dependencies.
+Open `http://localhost:4273`. The first visit asks you to create the owner password. Development data is written to `./data`.
 
-- `http://localhost:4273/designs.html` — design review with desktop / iPad / phone viewport switcher
-- `http://localhost:4273/` — responsive interactive prototype
-- `screenshots/desktop.png` — 1440 × 1000 desktop design (2× export)
-- `screenshots/ipad.png` — 834 × 1194 iPad design (2× export)
-- `screenshots/phone.png` — 390 × 844 phone design (2× export)
-- `screenshots/*-editor.png` — corresponding editor screens
+Useful checks:
 
-## What works
-
-Search, create/edit text, attach up to six local images, note colors, pin/unpin into a separate Pinned section, confirmed permanent deletion, unsaved-change confirmation, and keyboard shortcuts (`N` for new note, `/` for search). Native dialogs manage modal focus. The phone has a bottom capture dock and full-screen editor.
-
-Pin directly from a card, or use the Pin toggle in the editor and save. On desktop, unpinned card controls appear on hover/focus; pinned controls and all tablet/phone controls remain visible. Pinning preserves the note’s date and its order within each group. Search covers both pinned and other notes.
-
-**This is not the production app.** Changes (including pin state) live only in memory and reset on reload. Selected images stay in the browser; they are never uploaded. No database, account system, offline persistence, or device sync is implemented. The sync UI reads “Not connected”; prototype disclaimers have been removed from the interface. Do not use this prototype for important notes.
-
-The static development server is for reviewing sample designs, not a hardened production deployment. It serves this project directory. Stop it when the review is done; a production server should serve a separate public build directory behind HTTPS and authentication.
-
-## Verify / regenerate screenshots
-
-```sh
-npm ci
-npx playwright install chromium
+```bash
+npm run typecheck
 npm test
-# With the preview server running:
-npm run screenshots
+npm run build
+npm run audit
 ```
 
-Tests cover responsive layouts (320, 390, 768, 834, 1024, 1440), card overlap/overflow, search, create/edit/delete, image input, pin/unpin (including touch, keyboard, editor, search, and empty groups), fixed textareas, unsaved changes, preview switching, and automated WCAG A/AA checks on the board and editor. Browser automation is Chromium-based; actual iOS Safari device/keyboard testing remains for implementation.
+## Deploy with Docker Compose and Tailscale Serve
 
-## Files
+Build and start the application:
 
-- `index.html`, `styles.css`, `app.js` — responsive prototype
-- `notes.js` — sample content
-- `icons.js` — local SVG icons
-- `designs.html`, `designs.css`, `designs.js` — review presentation
-- `DESIGN.md` — design direction and scope
-- `assets/` — self-hosted fonts, demo photos, and an authored sample screenshot
+```bash
+docker compose up -d --build
+```
 
-All prototype assets load locally, with no analytics or third-party runtime requests. Font licenses are included in `assets/`. Sample photography sources are recorded in `assets/SOURCES.md`.
+Compose publishes jot. only on the VPS loopback interface at `127.0.0.1:3000`. It is not exposed on the VPS's public interfaces.
+
+Expose it privately to your Tailnet with HTTPS:
+
+```bash
+tailscale serve --bg localhost:3000
+```
+
+Use the `https://…ts.net` URL reported by Tailscale. HTTPS is required for installation and service-worker functionality. Do not use Tailscale Funnel unless you intentionally want public internet access.
+
+The first visit creates the only owner account. There are no default credentials.
+
+## Persistent data and backups
+
+The `jot-data` Docker volume contains:
+
+```text
+/data/jot.sqlite
+/data/jot.sqlite-wal
+/data/jot.sqlite-shm
+/data/images/
+```
+
+Back up the database and image directory together. The safest simple procedure is:
+
+```bash
+docker compose stop jot
+docker run --rm -v jot-data:/data -v "$PWD/backups:/backup" \
+  alpine tar czf "/backup/jot-$(date +%F-%H%M%S).tar.gz" -C /data .
+docker compose start jot
+```
+
+Test restoring backups periodically. Browser storage is a convenience for offline work, not a backup.
+
+## Updates
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+The PWA downloads frontend updates in the background. It does not force a reload while a note is being edited.
+
+## Sync behavior
+
+Edits are committed to IndexedDB first and sent to the server immediately when possible. The header distinguishes **Saved on device**, **Syncing…**, **Synced**, and failure/offline states.
+
+Mobile operating systems can suspend web apps after they are backgrounded. An edit made offline may therefore remain only on its original device until jot. is opened again with connectivity.
+
+## Security notes
+
+- Keep the app restricted to the Tailnet.
+- Authentication remains enabled as defense in depth.
+- Passwords use Argon2id; raw session tokens are never stored in SQLite.
+- Cookies are HTTP-only and SameSite Strict; production cookies are Secure behind HTTPS.
+- Uploads are limited by count, bytes, decoded dimensions, and detected file contents.
+- API mutations reject cross-site browser requests.
+- SQLite queries are parameterized and API inputs are parsed with Zod.

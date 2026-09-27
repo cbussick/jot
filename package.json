@@ -1,19 +1,69 @@
 {
-  "name": "sticky-notes-app",
-  "version": "1.0.0",
-  "description": "jot. responsive screen design prototype",
+  "name": "jot",
+  "version": "0.1.0",
+  "description": "A private, self-hosted place for little notes.",
   "private": true,
-  "scripts": {
-    "dev": "python3 -m http.server 4273 --bind 0.0.0.0",
-    "test": "playwright test",
-    "screenshots": "node scripts/screenshots.mjs"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c green,blue \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "DATA_DIR=./data PORT=3000 tsx watch src/server/index.ts",
+    "dev:client": "vite",
+    "build": "vite build && tsc -p tsconfig.server.json",
+    "start": "NODE_ENV=production node dist/server/server/index.js",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "test": "npm run test:unit && playwright test",
+    "test:unit": "vitest run",
+    "audit": "npm audit --audit-level=high"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "@tanstack/react-query": "^5.90.21",
+    "better-sqlite3": "^12.6.2",
+    "cookie": "^1.1.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1",
+    "file-type": "^21.3.0",
+    "helmet": "^8.1.0",
+    "idb": "^8.0.3",
+    "multer": "^2.1.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "sharp": "^0.35.4",
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
-    "@axe-core/playwright": "^4.13.0",
-    "@playwright/test": "^1.63.0"
+    "@axe-core/playwright": "^4.11.1",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.58.2",
+    "@stylexjs/eslint-plugin": "^0.18.1",
+    "@stylexjs/stylex": "^0.18.1",
+    "@stylexjs/unplugin": "^0.18.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/supertest": "^7.2.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.0.3",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "supertest": "^7.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vite": "^7.3.1",
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.1.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "esbuild@0.28.2": true,
+    "sharp@0.35.4": true
   }
 }

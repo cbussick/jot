@@ -1,0 +1,19 @@
+services:
+  jot:
+    build: .
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATA_DIR: /data
+      SESSION_DAYS: 30
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - jot-data:/data
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  jot-data:
+    name: jot-data

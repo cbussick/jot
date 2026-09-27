@@ -1,0 +1,30 @@
+import express from 'express';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { environmentSchema } from '../shared/contracts.js';
+import { createApp } from './app.js';
+import { openDatabase } from './database.js';
+
+const environment = environmentSchema.parse(process.env);
+const database = openDatabase(environment);
+const app = createApp(database, environment);
+const clientDirectory = resolve('dist/client');
+
+app.get('/healthz', (_request, response) => response.json({ ok: true }));
+if (existsSync(clientDirectory)) {
+  app.use(express.static(clientDirectory, { index: false, maxAge: environment.NODE_ENV === 'production' ? '1h' : 0 }));
+  app.get(/^(?!\/api\/).*/, (_request, response) => response.sendFile('index.html', { root: clientDirectory }));
+}
+
+const server = app.listen(environment.PORT, '0.0.0.0', () => {
+  console.log(`jot. listening on http://0.0.0.0:${environment.PORT}`);
+});
+
+function shutdown() {
+  server.close(() => {
+    database.close();
+    process.exit(0);
+  });
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

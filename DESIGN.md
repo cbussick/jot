@@ -1,42 +1,39 @@
-# jot. — screen design
+# jot. — product and design decisions
 
-A small, self-hosted place for text and images. This milestone is a design prototype, not a deployed notes service.
+## Product boundary
+
+jot. is a single-owner, self-hosted home for text and image notes. It intentionally excludes checklists, drawings, labels, archive, reminders, sharing, and a persistent trash folder.
 
 ## Visual direction
 
-- Canvas `#F7F8FA`; ink `#263630`; primary evergreen `#285B48`; butter paper `#F8EBAD`; mint paper `#DBEBE1`; lilac paper `#EAE4F3`.
-- Manrope throughout, without per-note font variants. Desktop/iPad notes use 17px titles, 14px bodies, and 12px dates. Phones use 15px titles, 14px bodies, and 12px dates (14/13/12px at widths ≤360px). Sizes are centralized as rem-based CSS tokens, shared by text and image notes.
-- Left-aligned content; four masonry-style columns on desktop, three on iPad, two on phones. Images retain their proportions.
-- The notes supply the personality. No decorative sidebar, dashboard metrics, labels, checklists, archive, reminders, or trash.
-- Color is a lightweight visual note preference, not a label system.
-- The board heading stands alone, without a caption or decorative icon. Dates are plain text, without note-type icons.
-- Pinned notes form a separate section above other notes, with the same column widths and colors. The section disappears when empty. Two sample notes start pinned.
+- Canvas `#F7F8FA`; ink `#263630`; evergreen `#285B48`; butter `#F8EBAD`; mint `#DBEBE1`; lilac `#EAE4F3`; peach `#F6DFD2`.
+- Manrope throughout.
+- Four masonry-style columns on desktop, three on tablet, and two on phones.
+- Pinned notes form a separate section above other notes. Empty sections disappear.
+- Images retain their proportions. Color remains a lightweight visual preference rather than a taxonomy.
+- Dates are plain text. The interface avoids decorative navigation, metrics, and feature advertising.
 
-## Layouts
+## Responsive behavior
 
-Desktop, 1440 × 1000:
-```
-jot.             [ Search your notes                 ]   Not connected
-Your notes
-[ Write something…                                      + image ]
-All notes  12                                         Newest first
-Pinned
-[ note ] [ note ]
-Other notes
-[ note ] [ image ] [ note ] [ image ]
-[ image] [ note  ] [ image] [ note  ]
-```
+- Desktop and tablet use a capture bar and modal editor.
+- Phones use a fixed bottom capture dock and full-screen editor.
+- Unpinned card controls appear on desktop hover/focus and remain visible on touch-oriented layouts.
+- Textareas have fixed responsive dimensions and scroll internally.
 
-iPad portrait, 834 × 1194: same hierarchy, three columns, generous touch targets, shorter search. Editor opens as a centered sheet. Landscape adapts naturally.
+## Persistence and sync
 
-Phone, 390 × 844: compact header; search beneath it; two columns; fixed bottom capture dock for new note and image upload. Editor becomes a full-screen page. No duplicated desktop capture bar.
+The browser commits edits to IndexedDB before attempting the network. A durable outbox coalesces pending changes by note. The Express server is authoritative after synchronization and stores notes in SQLite.
 
-## Brief review
+Each note has a monotonically increasing version. Mutations include the version the editor started from. If another device has changed the note, jot. retains the server version and creates a separate local conflict copy rather than silently overwriting content.
 
-A navigation rail and filter chips were considered and removed: there are no destinations or labels to justify them. A oversized welcome section was rejected in favor of a compact note-board heading. The only pronounced styling is on the notes themselves, echoing the mixed text and screenshots in the supplied Keep reference.
+The interface reports local, syncing, synced, offline, and failure states separately. It never claims an edit is synced before receiving server confirmation.
 
-## Prototype scope
+## PWA behavior
 
-Working search, create/edit, image selection, note colors, pin/unpin, and confirmed permanent deletion. Card pin controls act immediately without opening the editor; on desktop they appear on hover/focus, with pinned controls always visible. Tablet/phone controls remain visible with 44px targets. The editor also has a Pin toggle that commits on Save note and participates in unsaved-change confirmation. Pinning does not change a note’s edit date or newest-first order within its group. Search includes both groups. Changes exist only in memory and reset on reload. The sync status reads “Not connected” until real sync exists. Prototype disclaimers and the decorative bottom footer are removed from the interface. Desktop/iPad creation uses only the capture bar, without a duplicate New note button or boxed N hint; the N shortcut still works. Demo photos and fonts are served locally. No accounts, database, upload endpoint, real device sync, or production deployment is implemented.
+The manifest provides installation metadata. The service worker precaches the application shell and caches successfully retrieved note images. Notes and pending image blobs live in IndexedDB.
 
-Before production: authenticated private access, server-side note and image storage, upload validation, conflict-aware sync, offline state, backups, and HTTPS.
+The app retries synchronization on saves, reconnection, foregrounding, explicit requests, and a short foreground polling interval. It does not promise background execution after a mobile OS suspends it.
+
+## Deployment boundary
+
+The production unit is one Docker container plus one persistent volume. Tailscale Serve terminates HTTPS and proxies to a loopback-only port. No separate reverse proxy, database container, Redis instance, queue, or background worker is required.
