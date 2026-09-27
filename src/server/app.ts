@@ -192,8 +192,17 @@ function rejectCrossSiteRequests(request: Request, response: Response, next: Nex
   if (request.get('Sec-Fetch-Site') === 'cross-site') return response.status(403).json({ error: 'Cross-site requests are not allowed.' });
   if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
     const origin = request.get('Origin');
-    const expected = `${request.protocol}://${request.get('host')}`;
-    if (origin && origin !== expected) return response.status(403).json({ error: 'Request origin is not allowed.' });
+    const host = request.get('host');
+    if (origin) {
+      try {
+        const originUrl = new URL(origin);
+        if (!host || !['http:', 'https:'].includes(originUrl.protocol) || originUrl.host.toLowerCase() !== host.toLowerCase()) {
+          return response.status(403).json({ error: 'Request origin is not allowed.' });
+        }
+      } catch {
+        return response.status(403).json({ error: 'Request origin is not allowed.' });
+      }
+    }
   }
   next();
 }

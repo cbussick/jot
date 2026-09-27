@@ -47,6 +47,16 @@ describe('authentication gates', () => {
     expect((await request(app).post('/api/auth/login').send({ password: `${password}!` })).status).toBe(401);
     expect((await agent.post('/api/auth/logout').set('Sec-Fetch-Site', 'cross-site')).status).toBe(403);
   });
+
+  it('accepts an HTTPS origin when TLS terminates before the HTTP application', async () => {
+    const response = await request(app)
+      .post('/api/auth/setup')
+      .set('Host', 'jot.example.ts.net:4444')
+      .set('Origin', 'https://jot.example.ts.net:4444')
+      .send({ password: 'short' });
+    expect(response.status).toBe(400);
+    expect(response.body.error).not.toBe('Request origin is not allowed.');
+  });
 });
 
 describe('notes API', () => {
