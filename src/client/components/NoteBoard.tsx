@@ -175,7 +175,6 @@ function NoteCard({ note, onCardClick, onPin, onContextMenu, dropTarget, onPoint
       <span {...stylex.props(styles.noteContent, image && styles.imageContent)}>
         {note.title && <span {...stylex.props(styles.noteTitle)}>{note.title}</span>}
         {note.body && <span {...stylex.props(styles.noteBody)}>{note.body}</span>}
-        <time dateTime={note.updatedAt} {...stylex.props(styles.noteDate)}>{formatDate(note.updatedAt)}</time>
       </span>
     </button>
     {!dropTarget && <button type="button" data-pin-id={note.id} aria-label={`${note.pinned ? 'Unpin' : 'Pin'} note: ${note.title || note.body || 'Image note'}`} aria-pressed={note.pinned} title={note.pinned ? 'Unpin note' : 'Pin note'} onClick={() => onPin(note)} {...stylex.props(styles.pin, note.pinned ? styles.pinned : styles.pinHiddenDesktop)}><Icon name={note.pinned ? 'pin-filled' : 'pin'} width={18}/></button>}
@@ -220,13 +219,4 @@ function useMasonry(ref: React.RefObject<HTMLUListElement | null>, notes: LocalN
     layout();
     return () => observer.disconnect();
   }, [ref, notes]);
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  const now = new Date();
-  const sameDay = date.toDateString() === now.toDateString();
-  return sameDay
-    ? `Today, ${new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(date)}`
-    : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
 }

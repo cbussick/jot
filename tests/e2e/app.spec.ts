@@ -45,6 +45,37 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Open note: Image note' })).not.toBeVisible();
 });
 
+test('shows created and updated times only inside an existing note', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New note' }).click();
+  const addDialog = page.getByRole('dialog', { name: 'Add note' });
+  await expect(addDialog.locator('time')).toHaveCount(0);
+  await addDialog.getByRole('textbox', { name: 'Title' }).fill('Timestamp placement');
+  await addDialog.getByRole('button', { name: 'Close note' }).click();
+
+  const card = page.getByRole('button', { name: 'Open note: Timestamp placement' });
+  await expect(card).toBeVisible();
+  await expect(card.locator('time')).toHaveCount(0);
+  await card.click();
+  const editor = page.getByRole('dialog', { name: 'Edit note' });
+  const timestamps = editor.locator('header time');
+  await expect(timestamps).toHaveCount(2);
+  await expect(editor.locator('header')).toContainText('Created');
+  await expect(editor.locator('header')).toContainText('Updated');
+  const created = await timestamps.nth(0).getAttribute('datetime');
+  const updated = await timestamps.nth(1).getAttribute('datetime');
+  expect(created).toBeTruthy();
+  expect(updated).toBeTruthy();
+  expect(await timestamps.nth(0).textContent()).toBeTruthy();
+  expect(await timestamps.nth(1).textContent()).toBeTruthy();
+  const actions = await editor.getByRole('button', { name: 'Close note' }).boundingBox();
+  const metadata = await editor.locator('header time').first().boundingBox();
+  expect(metadata!.x + metadata!.width).toBeLessThanOrEqual(actions!.x);
+  await editor.getByRole('button', { name: 'Close note' }).click();
+  await expect(card.locator('time')).toHaveCount(0);
+});
+
 test('shows the simplified copy and gives sync its own dismissible dialog', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('searchbox')).toHaveAttribute('placeholder', 'Search your notes');
