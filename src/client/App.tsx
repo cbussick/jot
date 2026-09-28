@@ -121,6 +121,24 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     return () => document.removeEventListener('keydown', keydown);
   }, [notes]);
 
+  useEffect(() => {
+    const paste = (event: ClipboardEvent) => {
+      if (event.defaultPrevented || editor || document.querySelector('dialog[open]')) return;
+      const files = [...(event.clipboardData?.items ?? [])]
+        .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+        .flatMap(item => { const file = item.getAsFile(); return file ? [file] : []; });
+      if (!files.length) return; // Keep normal text paste untouched.
+      event.preventDefault();
+      if (files.length > 6 || files.some(file => !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 20 * 1024 * 1024)) {
+        notify('Choose up to 6 JPG, PNG, WebP or GIF images under 20 MB.');
+        return;
+      }
+      setEditor({ files });
+    };
+    document.addEventListener('paste', paste);
+    return () => document.removeEventListener('paste', paste);
+  }, [editor, notify]);
+
   const filtered = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return notes.filter(note => [note.title, note.body, ...note.images.map(image => image.alt)].join(' ').toLocaleLowerCase().includes(normalized));

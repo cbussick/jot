@@ -494,6 +494,43 @@ test('image-only cards have no empty content section', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Open note: A caption' }).getByText('A caption')).toBeVisible();
 });
 
+test('pasting an image from the overview opens a new note with the image attached', async ({ page, context }) => {
+  await page.goto('/');
+  const search = page.getByRole('searchbox', { name: 'Search notes' });
+  await search.focus();
+  const textPasteAllowed = await search.evaluate(element => {
+    const clipboard = new DataTransfer();
+    clipboard.setData('text/plain', 'ordinary text');
+    return element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: clipboard }));
+  });
+  expect(textPasteAllowed).toBe(true);
+  await expect(page.getByRole('dialog', { name: 'Add note' })).not.toBeVisible();
+
+  const jpeg = await readFile('tests/fixtures/image.jpg');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(async bytes => {
+    const image = new Image();
+    const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' }));
+    try {
+      image.src = url;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width; canvas.height = image.height;
+      canvas.getContext('2d')!.drawImage(image, 0, 0);
+      const png = await new Promise<Blob>(resolve => canvas.toBlob(blob => resolve(blob!), 'image/png'));
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+    } finally { URL.revokeObjectURL(url); }
+  }, [...jpeg]);
+  await search.press('ControlOrMeta+v');
+  const editor = page.getByRole('dialog', { name: 'Add note' });
+  await expect(editor.getByRole('button', { name: 'View image 1' })).toBeVisible();
+  await expect(search).toHaveValue('');
+  await editor.getByRole('button', { name: 'Close note' }).click();
+  await expect(page.getByRole('button', { name: 'Open note: image.png' })).toBeVisible();
+  await page.getByRole('button', { name: 'Open note: image.png' }).click();
+  await expect(page.getByRole('dialog', { name: 'Edit note' }).getByRole('button', { name: 'View image 1' })).toBeVisible();
+});
+
 test('pastes clipboard images into new and existing notes without disrupting text paste', async ({ page, context }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New note' }).click();
