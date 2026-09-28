@@ -109,12 +109,17 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     const keydown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && event.target.closest('input,textarea,[contenteditable]')) return;
       if (document.querySelector('dialog[open]') || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key === '/') { event.preventDefault(); document.querySelector<HTMLInputElement>('#search')?.focus(); }
+      if (event.key.toLowerCase() === 'f') { event.preventDefault(); document.querySelector<HTMLInputElement>('#search')?.focus(); }
       if (event.key.toLowerCase() === 'n') { event.preventDefault(); setEditor({}); }
+      if (event.key.toLowerCase() === 'd' && !event.repeat && event.target instanceof HTMLElement) {
+        const id = event.target.dataset.noteId;
+        const note = notes.find(item => item.id === id);
+        if (note) { event.preventDefault(); confirmDelete(note); }
+      }
     };
     document.addEventListener('keydown', keydown);
     return () => document.removeEventListener('keydown', keydown);
-  }, []);
+  }, [notes]);
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -176,7 +181,7 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
   return <>
     <a href="#main" {...stylex.props(styles.skipLink)}>Skip to notes</a>
     <header {...stylex.props(styles.header)}><a href="/" aria-label="jot home" {...stylex.props(styles.brand)}><Brand/></a>
-      <search {...stylex.props(styles.search)}><Icon name="search"/><input id="search" type="search" aria-label="Search notes" placeholder="Search your notes" value={query} onChange={event => setQuery(event.target.value)} {...stylex.props(styles.searchInput)}/><kbd {...stylex.props(styles.searchKey)}>/</kbd></search>
+      <search {...stylex.props(styles.search)}><Icon name="search"/><input id="search" type="search" aria-label="Search notes" placeholder="Search your notes" value={query} onChange={event => setQuery(event.target.value)} {...stylex.props(styles.searchInput)}/><kbd {...stylex.props(styles.searchKey)}>F</kbd></search>
       <div {...stylex.props(styles.accountActions)}><button type="button" aria-label={status.label} onClick={() => syncDialog.current?.showModal()} {...stylex.props(styles.syncButton)}><Icon name={status.icon}/><span>{status.label}</span></button><button type="button" onClick={() => void logout()} {...stylex.props(styles.signOutButton)}>Sign out</button></div>
     </header>
     <main id="main" {...stylex.props(styles.workspace)}><section {...stylex.props(styles.pageHeading)}><h1 {...stylex.props(styles.h1)}>Your notes</h1></section>
