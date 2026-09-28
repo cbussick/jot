@@ -5,6 +5,8 @@ import { imageSource } from '../local-store';
 import { styles } from '../app.stylex';
 import { Icon } from './Icon';
 import { ImageMosaic } from './ImageMosaic';
+import { LinkedText } from './LinkedText';
+import { linkParts } from './link-parts';
 
 export function NoteBoard({ notes, heading, label, onOpen, onPin, onContextMenu, onReorder }: {
   notes: LocalNote[]; heading?: string; label: string;
@@ -168,15 +170,29 @@ function NoteCard({ note, onCardClick, onPin, onContextMenu, dropTarget, onPoint
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   const image = note.images[0];
+  const titleParts = linkParts(note.title);
+  const bodyParts = linkParts(note.body);
+  const hasLinks = [...titleParts, ...bodyParts].some(part => part.href);
+  const content = <>
+    {note.images.length === 1 && <LocalPhoto image={image}/>}
+    {note.images.length > 1 && <ImageMosaic images={note.images.map(item => <LocalPhoto key={item.id} image={item} className={stylex.props(styles.mosaicPhoto).className}/>)}/>}
+    <span {...stylex.props(styles.noteContent, image && styles.imageContent, hasLinks && styles.linkedContent)}>
+      {note.title && <span {...stylex.props(styles.noteTitle)}>{hasLinks ? <LinkedText parts={titleParts}/> : note.title}</span>}
+      {note.body && <span {...stylex.props(styles.noteBody)}>{hasLinks ? <LinkedText parts={bodyParts}/> : note.body}</span>}
+    </span>
+  </>;
+  const buttonProps = {
+    type: 'button' as const, 'data-note-id': note.id,
+    'aria-label': `Open note: ${note.title || note.body || image?.alt || 'Image note'}`,
+    title: 'Drag to reorder · arrow keys to move', onClick: onCardClick, onPointerDown,
+    onContextMenu: (event: React.MouseEvent<HTMLButtonElement>) => { event.preventDefault(); if (navigator.maxTouchPoints === 0) onContextMenu(note, event); },
+    onDragStart: (event: React.DragEvent<HTMLButtonElement>) => event.preventDefault(), onKeyDown,
+  };
   return <li data-item-id={note.id} {...stylex.props(styles.noteItem, dropTarget && styles.dropTarget)}>
-    <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} title="Drag to reorder · arrow keys to move" onClick={onCardClick} onPointerDown={onPointerDown} onContextMenu={event => { event.preventDefault(); if (navigator.maxTouchPoints === 0) onContextMenu(note, event); }} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>
-      {note.images.length === 1 && <LocalPhoto image={image}/>}
-      {note.images.length > 1 && <ImageMosaic images={note.images.map(item => <LocalPhoto key={item.id} image={item} className={stylex.props(styles.mosaicPhoto).className}/>)}/>}
-      <span {...stylex.props(styles.noteContent, image && styles.imageContent)}>
-        {note.title && <span {...stylex.props(styles.noteTitle)}>{note.title}</span>}
-        {note.body && <span {...stylex.props(styles.noteBody)}>{note.body}</span>}
-      </span>
-    </button>
+    {hasLinks ? <div {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>
+      <button {...buttonProps} {...stylex.props(styles.cardOverlay)}/>
+      {content}
+    </div> : <button {...buttonProps} {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>{content}</button>}
     {!dropTarget && <button type="button" data-pin-id={note.id} aria-label={`${note.pinned ? 'Unpin' : 'Pin'} note: ${note.title || note.body || 'Image note'}`} aria-pressed={note.pinned} title={note.pinned ? 'Unpin note' : 'Pin note'} onClick={() => onPin(note)} {...stylex.props(styles.pin, styles.pinVisibility, note.pinned && styles.pinned)}><Icon name={note.pinned ? 'pin-filled' : 'pin'} width={18}/></button>}
   </li>;
 }
