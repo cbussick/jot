@@ -277,7 +277,7 @@ for (const width of [390, 834, 1440]) {
   });
 }
 
-test('mobile create controls never cover notes while scrolling', async ({ page }) => {
+test('mobile create controls float while leaving the last notes clear at the bottom', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await page.getByRole('button', { name: 'New note' }).click();
@@ -285,13 +285,16 @@ test('mobile create controls never cover notes while scrolling', async ({ page }
   await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Long thought. '.repeat(180));
   await page.getByRole('button', { name: 'Close note' }).click();
   await expect(page.getByRole('button', { name: 'Open note: Tall mobile note' })).toBeVisible();
-  await page.evaluate(() => window.scrollTo(0, 200));
-  const overlap = await page.evaluate(() => {
-    const nav = document.querySelector<HTMLElement>('nav[aria-label="Create a note"]')!.getBoundingClientRect();
-    const cards = [...document.querySelectorAll<HTMLElement>('[data-note-id]')].map(card => card.getBoundingClientRect());
-    return cards.some(card => card.left < nav.right && card.right > nav.left && card.top < nav.bottom && card.bottom > nav.top);
+  const nav = page.getByRole('navigation', { name: 'Create a note' });
+  await expect(nav).toHaveCSS('position', 'fixed');
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const clearance = await page.evaluate(() => {
+    const navTop = document.querySelector<HTMLElement>('nav[aria-label="Create a note"]')!.getBoundingClientRect().top;
+    const lastCardBottom = Math.max(...[...document.querySelectorAll<HTMLElement>('[data-note-id]')].map(card => card.getBoundingClientRect().bottom));
+    return { gap: navTop - lastCardBottom, scrolled: scrollY > 0 };
   });
-  expect(overlap).toBe(false);
+  expect(clearance.scrolled).toBe(true);
+  expect(clearance.gap).toBeGreaterThanOrEqual(12);
 });
 
 test('serves the service worker and page shell without browser HTTP caching', async ({ request }) => {
