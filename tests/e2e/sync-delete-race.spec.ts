@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/isolated-test';
 
 test('deleting a newly saved note during sync does not resurrect it', async ({ page }) => {
   const title = `Delete race ${crypto.randomUUID()}`;

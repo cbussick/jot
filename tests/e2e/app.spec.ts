@@ -1,8 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/isolated-test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFile, writeFile } from 'node:fs/promises';
-
-test.describe.configure({ mode: 'serial' });
 
 test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await page.goto('/');
@@ -616,10 +614,11 @@ test('centers images and navigates and removes mixed gallery images', async ({ p
   await page.getByRole('button', { name: 'Open note: Gallery note', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   const bounds = await editor.boundingBox();
-  const photo = await editor.getByRole('button', { name: 'View image 1' }).boundingBox();
-  expect(Math.abs(photo!.x + photo!.width / 2 - (bounds!.x + bounds!.width / 2))).toBeLessThan(8);
-  expect(photo!.width).toBeGreaterThan(420);
-  expect(photo!.height).toBeGreaterThan(300);
+  const photo = editor.getByRole('button', { name: 'View image 1' });
+  await expect.poll(async () => (await photo.boundingBox())!.width).toBeGreaterThan(420);
+  const photoBounds = await photo.boundingBox();
+  expect(Math.abs(photoBounds!.x + photoBounds!.width / 2 - (bounds!.x + bounds!.width / 2))).toBeLessThan(8);
+  expect(photoBounds!.height).toBeGreaterThan(300);
   await page.getByRole('button', { name: 'Attach an image' }).click();
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
   await editor.getByRole('button', { name: 'View image 1' }).click();
@@ -817,13 +816,17 @@ for (const width of [390, 834, 1440]) {
 
 for (const width of [390, 1280]) {
   test(`create controls leave the last notes clear at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 844 });
+    await page.setViewportSize({ width, height: 600 });
     await page.goto('/');
-    await page.getByRole('button', { name: 'New note' }).click();
-    await page.getByRole('textbox', { name: 'Title' }).fill(`Tall note ${width}`);
-    await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Long thought. '.repeat(180));
-    await page.getByRole('button', { name: 'Close note' }).click();
-    await expect(page.getByRole('button', { name: `Open note: Tall note ${width}`, exact: true })).toBeVisible();
+    // Seed enough rows for both two-column mobile and four-column desktop layouts.
+    for (let index = 0; index < 12; index++) {
+      await page.getByRole('heading', { name: 'Your notes' }).click();
+      await page.keyboard.press('n');
+      await page.getByRole('textbox', { name: 'Title' }).fill(`Tall note ${index}`);
+      await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Long thought. '.repeat(40));
+      await page.getByRole('button', { name: 'Close note' }).click();
+      await expect(page.getByRole('button', { name: `Open note: Tall note ${index}`, exact: true })).toBeVisible();
+    }
     const nav = page.getByRole('navigation', { name: 'Create a note' });
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await expect(nav).toHaveCSS('position', 'fixed');

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/isolated-test';
 
 test('rapid image edits do not generate a conflict copy', async ({ page }) => {
   const title = `Race ${crypto.randomUUID()}`;

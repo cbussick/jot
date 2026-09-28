@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/isolated-test';
 
 test('rapid text edits sync without conflict', async ({ page }) => {
   const title = `Text race ${crypto.randomUUID()}`;
