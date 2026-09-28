@@ -88,12 +88,11 @@ test('drags notes into a persistent order and supports keyboard reordering', asy
   const board = page.getByRole('list', { name: 'Notes' });
   const titles = async () => (await board.getByRole('button', { name: /^Open note:/ }).allTextContents()).filter(text => text.includes('Order '));
   const first = page.getByRole('button', { name: 'Move note: Order one. Drag or use arrow keys' });
-  const last = page.getByRole('button', { name: 'Move note: Order three. Drag or use arrow keys' });
   const start = await first.boundingBox();
-  const end = await last.boundingBox();
+  const end = await page.getByRole('button', { name: 'Open note: Order three' }).boundingBox();
   await page.mouse.move(start!.x + 18, start!.y + 18);
   await page.mouse.down();
-  await page.mouse.move(end!.x + 18, end!.y + 18, { steps: 8 });
+  await page.mouse.move(end!.x + end!.width / 2, end!.y + end!.height / 2, { steps: 8 });
   await page.mouse.up();
   await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
@@ -282,6 +281,23 @@ for (const width of [390, 834, 1440]) {
     expect(overflow).toBe(false);
   });
 }
+
+test('mobile create controls never cover notes while scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New note' }).click();
+  await page.getByRole('textbox', { name: 'Title' }).fill('Tall mobile note');
+  await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Long thought. '.repeat(180));
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await expect(page.getByRole('button', { name: 'Open note: Tall mobile note' })).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 200));
+  const overlap = await page.evaluate(() => {
+    const nav = document.querySelector<HTMLElement>('nav[aria-label="Create a note"]')!.getBoundingClientRect();
+    const cards = [...document.querySelectorAll<HTMLElement>('[data-note-id]')].map(card => card.getBoundingClientRect());
+    return cards.some(card => card.left < nav.right && card.right > nav.left && card.top < nav.bottom && card.bottom > nav.top);
+  });
+  expect(overlap).toBe(false);
+});
 
 test('offers a refresh when a new offline app version is waiting', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
