@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request, { type Agent } from 'supertest';
@@ -91,6 +91,24 @@ describe('notes API', () => {
     const updated = await agent.put(`/api/notes/${ids[1]}`).field('payload', JSON.stringify({ id: ids[1], title: 'Edited', body: '', color: 'paper', pinned: false, expectedVersion: 1, retainedImageIds: [] }));
     expect(updated.status).toBe(200);
     expect((await agent.get('/api/notes')).body.notes.map((note: { id: string }) => note.id)).toEqual([ids[0], ids[2], ids[1]]);
+  });
+
+  it('accepts images above 10 MB and rejects images above 20 MB', async () => {
+    await setup();
+    const id = crypto.randomUUID();
+    const payload = { id, title: '', body: '', color: 'paper', pinned: false, expectedVersion: 0, retainedImageIds: [] };
+    const jpeg = await readFile('tests/fixtures/image.jpg');
+    const image = Buffer.concat([jpeg, Buffer.alloc(11 * 1024 * 1024)]);
+    const accepted = await agent.put(`/api/notes/${id}`).field('payload', JSON.stringify(payload))
+      .attach('images', image, { filename: 'large.jpg', contentType: 'image/jpeg' });
+    expect(accepted.status).toBe(201);
+    expect(accepted.body.note.images[0].size).toBe(image.length);
+
+    const oversized = Buffer.concat([jpeg, Buffer.alloc(20 * 1024 * 1024)]);
+    const rejected = await agent.put(`/api/notes/${id}`).field('payload', JSON.stringify({ ...payload, expectedVersion: 1 }))
+      .attach('images', oversized, { filename: 'too-large.jpg', contentType: 'image/jpeg' });
+    expect(rejected.status).toBe(400);
+    expect(rejected.body.error).toBe('Images must be under 20 MB.');
   });
 
   it('rejects files whose bytes do not match an accepted image format', async () => {
