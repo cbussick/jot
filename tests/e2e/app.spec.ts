@@ -216,6 +216,29 @@ test('accepts an image and keeps the editor textarea fixed', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
 });
 
+test('closes notes from the footer or backdrop, and keeps destructive actions in the header', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Add a note' }).click();
+  const editor = page.getByRole('dialog', { name: 'Something worth keeping' });
+  await editor.getByRole('textbox', { name: 'Title' }).fill('Dismissible note');
+  await editor.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(editor).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Open note: Dismissible note' }).click();
+  const saved = page.getByRole('dialog', { name: 'Edit note' });
+  const deleteBox = await saved.getByRole('button', { name: 'Delete note' }).boundingBox();
+  const pinBox = await saved.getByRole('button', { name: 'Pin note' }).boundingBox();
+  expect(deleteBox!.x).toBeLessThan(pinBox!.x);
+  await saved.getByRole('textbox', { name: 'Note', exact: true }).fill('Saved from backdrop');
+  await page.mouse.click(5, 5);
+  await expect(saved).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Open note: Dismissible note' }).click();
+  await expect(saved.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Saved from backdrop');
+  await saved.getByRole('button', { name: 'Delete note' }).click();
+  await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
+});
+
 test('confirms removal of draft and saved images without removing them on cancel', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Add a note' }).click();
@@ -233,6 +256,7 @@ test('confirms removal of draft and saved images without removing them on cancel
   await page.getByRole('button', { name: 'Attach an image' }).click();
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
   await page.getByRole('button', { name: 'Close note' }).click();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: 'Open note: Image removal test' }).click();
   await page.getByRole('button', { name: 'Remove image 1' }).click();
   await expect(confirmation).toBeVisible();
@@ -242,6 +266,7 @@ test('confirms removal of draft and saved images without removing them on cancel
   await confirmation.getByRole('button', { name: 'Remove image' }).click();
   await expect(page.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Close note' }).click();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: 'Open note: Image removal test' }).click();
   await expect(page.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
 });
@@ -258,6 +283,11 @@ for (const width of [390, 1440]) {
     const preview = page.getByRole('dialog', { name: 'Image preview' });
     await page.getByRole('button', { name: 'View image 1' }).click();
     await expect(preview.getByRole('img')).toBeVisible();
+    const imageBox = await preview.getByRole('img').boundingBox();
+    const removeBox = await preview.getByRole('button', { name: 'Remove image 1' }).boundingBox();
+    expect(removeBox!.x).toBeGreaterThan(imageBox!.x + imageBox!.width / 2);
+    expect(removeBox!.x + removeBox!.width).toBeLessThanOrEqual(imageBox!.x + imageBox!.width);
+    expect(removeBox!.y).toBeLessThan(imageBox!.y + 16);
     const bounds = await preview.boundingBox();
     if (width === 390) expect(bounds?.width).toBe(width);
     else expect(bounds?.width).toBeGreaterThan(800);
@@ -273,6 +303,50 @@ for (const width of [390, 1440]) {
     await expect(page.getByRole('dialog', { name: 'Edit note' })).toBeVisible();
   });
 }
+
+test('centers images and navigates and removes mixed gallery images', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Add a note' }).click();
+  await page.getByRole('textbox', { name: 'Title' }).fill('Gallery note');
+  await page.getByRole('button', { name: 'Attach an image' }).click();
+  await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Open note: Gallery note' }).click();
+  const editor = page.getByRole('dialog', { name: 'Edit note' });
+  const bounds = await editor.boundingBox();
+  const photo = await editor.getByRole('button', { name: 'View image 1' }).boundingBox();
+  expect(Math.abs(photo!.x + photo!.width / 2 - (bounds!.x + bounds!.width / 2))).toBeLessThan(8);
+  await page.getByRole('button', { name: 'Attach an image' }).click();
+  await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
+  await editor.getByRole('button', { name: 'View image 1' }).click();
+  const gallery = page.getByRole('dialog', { name: 'Image preview' });
+  await expect(gallery.getByText('1 / 2')).toBeVisible();
+  await gallery.getByRole('button', { name: 'Next image' }).click();
+  await expect(gallery.getByText('2 / 2')).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(gallery.getByText('1 / 2')).toBeVisible();
+  await page.keyboard.press('ArrowLeft');
+  await expect(gallery.getByText('2 / 2')).toBeVisible();
+  await gallery.getByRole('button', { name: 'Remove image 2' }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Remove this image?' });
+  await confirmation.getByRole('button', { name: 'Keep image' }).click();
+  await expect(gallery.getByText('2 / 2')).toBeVisible();
+  await gallery.getByRole('button', { name: 'Remove image 2' }).click();
+  await confirmation.getByRole('button', { name: 'Remove image' }).click();
+  await expect(gallery).toBeVisible();
+  await expect(gallery.getByRole('button', { name: 'Next image' })).toHaveCount(0);
+  await gallery.getByRole('button', { name: 'Remove image 1' }).click();
+  await confirmation.getByRole('button', { name: 'Remove image' }).click();
+  await expect(gallery).not.toBeVisible();
+  await expect(editor.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
+  await editor.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Open note: Gallery note' }).click();
+  await expect(page.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Delete note' }).click();
+  await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
+});
 
 test('receives an Android share as a draft and saves it on close', async ({ page }) => {
   await page.goto('/');
