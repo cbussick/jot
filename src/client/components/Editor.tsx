@@ -88,9 +88,9 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     }
   };
   return <>
-    <dialog ref={dialog} aria-label={note ? 'Edit note' : undefined} aria-labelledby={note ? undefined : 'editor-heading'} onCancel={event => { if (event.target !== event.currentTarget) return; event.preventDefault(); requestClose(); }} onClick={event => { if (event.target !== event.currentTarget) return; const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) requestClose(); }} {...stylex.props(styles.dialog, styles.editor, styles[color])}>
+    <dialog ref={dialog} aria-label={note ? 'Edit note' : 'Add note'} onCancel={event => { if (event.target !== event.currentTarget) return; event.preventDefault(); requestClose(); }} onClick={event => { if (event.target !== event.currentTarget) return; const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) requestClose(); }} {...stylex.props(styles.dialog, styles.editor, styles[color])}>
       <div {...stylex.props(styles.editorForm)}>
-        <header {...stylex.props(styles.editorHeader)}>{!note && <span id="editor-heading" {...stylex.props(styles.editorHeading)}>Something worth keeping</span>}<div {...stylex.props(styles.headerActions)}>
+        <header {...stylex.props(styles.editorHeader)}><div {...stylex.props(styles.headerActions)}>
           {note && <button type="button" aria-label="Delete note" onClick={() => deleteDialog.current?.showModal()} {...stylex.props(styles.iconButton, styles.deleteIcon)}><Icon name="trash"/></button>}
           <button type="button" aria-label={pinned ? 'Unpin note' : 'Pin note'} aria-pressed={pinned} onClick={() => setPinned(value => !value)} {...stylex.props(styles.pinText, pinned && styles.pinned)}><Icon name="pin" width={18}/></button>
           <button type="button" aria-label="Close note" disabled={saving} onClick={requestClose} {...stylex.props(styles.iconButton)}><Icon name="x"/></button>

@@ -65,7 +65,6 @@ export const styles = stylex.create({
   editor: { width: 'min(600px, calc(100% - 40px))', backgroundColor: 'var(--note-color)', '@media (max-width: 700px)': { margin: 0, width: '100%', height: '100dvh', maxHeight: '100dvh', maxWidth: '100%', borderRadius: 0, borderWidth: 0 } },
   editorForm: { display: 'flex', flexDirection: 'column', maxHeight: '90dvh', '@media (max-width: 700px)': { height: '100%', maxHeight: '100dvh', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' } },
   editorHeader: { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '14px 18px 12px 28px', fontSize: 12, color: '#546358' },
-  editorHeading: { marginRight: 'auto' },
   headerActions: { display: 'flex', alignItems: 'center', gap: 8 },
   pinText: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 8, ':hover': { backgroundColor: '#2636300c' } },
   iconButton: { width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, ':hover': { backgroundColor: '#2636300c' } },
