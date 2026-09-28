@@ -19,6 +19,8 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const deleteDialog = useRef<HTMLDialogElement>(null);
+  const removeImageDialog = useRef<HTMLDialogElement>(null);
+  const imageToRemove = useRef<{ kind: 'retained'; id: string } | { kind: 'new'; index: number } | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(note?.title ?? '');
   const [body, setBody] = useState(note?.body ?? '');
@@ -46,6 +48,16 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     // An empty draft has nothing to keep; shared images do.
     if (!note && !title.trim() && !body.trim() && retainedImages.length + newImages.length === 0) return onClose();
     void save();
+  };
+  const requestImageRemoval = (image: NonNullable<typeof imageToRemove.current>) => {
+    imageToRemove.current = image;
+    removeImageDialog.current?.showModal();
+  };
+  const confirmImageRemoval = () => {
+    const image = imageToRemove.current;
+    imageToRemove.current = null;
+    if (image?.kind === 'retained') setRetainedImages(images => images.filter(item => item.id !== image.id));
+    if (image?.kind === 'new') setNewImages(files => files.filter((_, index) => index !== image.index));
   };
   const addFiles = (files: FileList | null) => {
     if (!files?.length) return;
@@ -79,8 +91,8 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
           <button type="button" aria-label="Close note" disabled={saving} onClick={requestClose} {...stylex.props(styles.iconButton)}><Icon name="x"/></button>
         </div></header>
         {(retainedImages.length > 0 || newImages.length > 0) && <div {...stylex.props(styles.editorImages)}>
-          {retainedImages.map((image, index) => <div key={image.id} {...stylex.props(styles.editorImage)}><button type="button" aria-label={`View image ${index + 1}`} onClick={() => setPreview({ image })} {...stylex.props(styles.photoButton)}><LocalPhoto image={image} className={stylex.props(styles.editorPhoto).className}/></button><button type="button" aria-label={`Remove image ${index + 1}`} onClick={() => setRetainedImages(images => images.filter(item => item.id !== image.id))} {...stylex.props(styles.imageRemove)}><Icon name="x"/></button></div>)}
-          {newImages.map((file, index) => <NewPhoto key={`${file.name}-${file.lastModified}-${index}`} file={file} index={retainedImages.length + index} onOpen={openNewPreview} onRemove={() => setNewImages(files => files.filter((_, position) => position !== index))}/>) }
+          {retainedImages.map((image, index) => <div key={image.id} {...stylex.props(styles.editorImage)}><button type="button" aria-label={`View image ${index + 1}`} onClick={() => setPreview({ image })} {...stylex.props(styles.photoButton)}><LocalPhoto image={image} className={stylex.props(styles.editorPhoto).className}/></button><button type="button" aria-label={`Remove image ${index + 1}`} onClick={() => requestImageRemoval({ kind: 'retained', id: image.id })} {...stylex.props(styles.imageRemove)}><Icon name="x"/></button></div>)}
+          {newImages.map((file, index) => <NewPhoto key={`${file.name}-${file.lastModified}-${index}`} file={file} index={retainedImages.length + index} onOpen={openNewPreview} onRemove={() => requestImageRemoval({ kind: 'new', index })}/>) }
         </div>}
         <div {...stylex.props(styles.editorFields)}>
           <label className="sr-only" htmlFor="note-title">Title</label><input id="note-title" maxLength={160} placeholder="Title" value={title} onChange={event => setTitle(event.target.value)} {...stylex.props(styles.titleInput)}/>
@@ -96,6 +108,7 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
       </div>
     </dialog>
     {preview && <ImagePreview preview={preview} onClose={() => setPreview(null)}/>}
+    <ConfirmDialog ref={removeImageDialog} title="Remove this image?" copy="This image will no longer be attached to this note." cancel="Keep image" confirm="Remove image" onConfirm={confirmImageRemoval}/>
     <ConfirmDialog ref={deleteDialog} title="Delete this note?" copy="This is permanent. There’s no trash to come back to." cancel="Keep note" confirm="Delete note" onConfirm={() => note && onDelete(note)}/>
   </>;
 }

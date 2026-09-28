@@ -134,6 +134,36 @@ test('accepts an image and keeps the editor textarea fixed', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
 });
 
+test('confirms removal of draft and saved images without removing them on cancel', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'A thought worth keeping…' }).click();
+  await page.getByRole('textbox', { name: 'Title' }).fill('Image removal test');
+  await page.getByRole('button', { name: 'Attach an image' }).click();
+  await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
+  const confirmation = page.getByRole('dialog', { name: 'Remove this image?' });
+  await page.getByRole('button', { name: 'Remove image 1' }).click();
+  await expect(confirmation).toBeVisible();
+  await confirmation.getByRole('button', { name: 'Keep image' }).click();
+  await expect(page.getByRole('button', { name: 'View image 1' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove image 1' }).click();
+  await confirmation.getByRole('button', { name: 'Remove image' }).click();
+  await expect(page.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Attach an image' }).click();
+  await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await page.getByRole('button', { name: 'Open note: Image removal test' }).click();
+  await page.getByRole('button', { name: 'Remove image 1' }).click();
+  await expect(confirmation).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'View image 1' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove image 1' }).click();
+  await confirmation.getByRole('button', { name: 'Remove image' }).click();
+  await expect(page.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await page.getByRole('button', { name: 'Open note: Image removal test' }).click();
+  await expect(page.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
+});
+
 for (const width of [390, 1440]) {
   test(`opens draft and saved images in a lightbox at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
