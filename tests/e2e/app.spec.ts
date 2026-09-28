@@ -168,32 +168,40 @@ test('right-click note actions open, pin, and confirm deletion', async ({ page }
 });
 
 test('drags notes into a persistent order and supports keyboard reordering', async ({ page }) => {
+  const suffix = crypto.randomUUID();
+  const [one, two, three] = ['one', 'two', 'three'].map(label => `Order ${label} ${suffix}`);
   await page.goto('/');
-  for (const title of ['Order one', 'Order two', 'Order three']) {
+  for (const title of [one, two, three]) {
     await page.getByRole('button', { name: 'Add a note' }).click();
     await page.getByRole('textbox', { name: 'Title' }).fill(title);
     await page.getByRole('button', { name: 'Close note' }).click();
+    await expect(page.getByRole('button', { name: `Open note: ${title}` })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   }
-  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   const board = page.getByRole('list', { name: 'Notes' });
-  const titles = async () => (await board.getByRole('button', { name: /^Open note:/ }).allTextContents()).filter(text => text.includes('Order '));
-  const first = page.getByRole('button', { name: 'Open note: Order one' });
+  const titles = async () => (await board.getByRole('button', { name: /^Open note:/ }).allTextContents()).filter(text => text.includes(suffix));
+  const order = async () => (await titles()).map(text => text.includes(one) ? 'one' : text.includes(two) ? 'two' : 'three');
+  const first = page.getByRole('button', { name: `Open note: ${one}` });
+  const third = page.getByRole('button', { name: `Open note: ${three}` });
+  // Hover waits for the masonry/FLIP animation to settle before taking coordinates.
+  await third.hover();
+  await first.hover();
   const from = await first.boundingBox();
-  const to = await page.getByRole('button', { name: 'Open note: Order three' }).boundingBox();
+  const to = await third.boundingBox();
   await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2);
   await page.mouse.down();
   await page.mouse.move(to!.x + to!.width / 2, to!.y + to!.height / 2, { steps: 8 });
   await expect(page.locator('body > button[aria-hidden="true"]')).toBeVisible();
-  await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
+  await expect.poll(order).toEqual(['one', 'three', 'two']);
   await page.mouse.up();
   await expect(page.getByRole('dialog', { name: 'Edit note' })).not.toBeVisible();
-  await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
+  await expect.poll(order).toEqual(['one', 'three', 'two']);
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.reload();
-  await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
+  await expect.poll(order).toEqual(['one', 'three', 'two']);
   await first.focus();
   await page.keyboard.press('ArrowRight');
-  await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['three', 'one', 'two']);
+  await expect.poll(order).toEqual(['three', 'one', 'two']);
 });
 
 test.describe('touch reordering', () => {
