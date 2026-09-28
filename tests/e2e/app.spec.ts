@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { readFile, writeFile } from 'node:fs/promises';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -281,6 +282,29 @@ for (const width of [390, 834, 1440]) {
     expect(overflow).toBe(false);
   });
 }
+
+test('offers a refresh when a new offline app version is waiting', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+  const workerPath = 'dist/client/sw.js';
+  const original = await readFile(workerPath, 'utf8');
+  try {
+    await writeFile(workerPath, `${original}\n// test update ${Date.now()}\n`);
+    await page.evaluate(async () => (await navigator.serviceWorker.ready).update());
+    await expect(page.getByRole('button', { name: 'Refresh app' })).toBeVisible({ timeout: 10_000 });
+    const reloaded = page.waitForEvent('load', { timeout: 10_000 });
+    await page.getByRole('button', { name: 'Refresh app' }).click();
+    await reloaded;
+    await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('button', { name: 'Refresh app' })).toHaveCount(0, { timeout: 10_000 });
+  } finally {
+    await writeFile(workerPath, original);
+  }
+});
 
 test('requires the owner password in a new browser profile', async ({ browser }) => {
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });

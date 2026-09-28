@@ -95,7 +95,7 @@ git pull
 docker compose up -d --build
 ```
 
-The PWA downloads frontend updates in the background. It does not force a reload while a note is being edited.
+The PWA downloads frontend updates in the background and offers a **Refresh app** button when one is ready. Finish editing before refreshing; updates never force a reload mid-note. If an older installed version does not show the prompt, close all jot. windows and reopen it to allow its waiting service worker to activate. Do not clear browser site data to update the app: that data may include unsynced notes.
 
 ## Share screenshots from Android
 

@@ -24,6 +24,10 @@ registerRoute(
   }),
 );
 
+worker.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') void worker.skipWaiting();
+});
+
 worker.addEventListener('fetch', event => {
   if (event.request.method !== 'POST' || new URL(event.request.url).pathname !== '/share-target') return;
   event.respondWith((async () => {
