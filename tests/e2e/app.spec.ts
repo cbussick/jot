@@ -25,7 +25,7 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Note', exact: true }).fill('An edited private thought.');
   await page.getByRole('button', { name: 'Close note' }).click();
   await expect(page.getByRole('dialog', { name: 'Leave without saving?' })).toHaveCount(0);
-  await expect(page.getByRole('dialog', { name: 'A little note' })).not.toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Edit note' })).not.toBeVisible();
   await page.getByRole('searchbox').fill('edited private');
   await expect(page.getByText('An edited private thought.')).toBeVisible();
   await page.getByRole('searchbox').fill('');
@@ -33,13 +33,44 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Title' }).fill('');
   await page.getByRole('textbox', { name: 'Note', exact: true }).fill('');
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'A little note' })).not.toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Edit note' })).not.toBeVisible();
   await expect(page.getByRole('button', { name: 'Open note: Image note' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: 'Open note: Image note' }).click();
   await page.getByRole('button', { name: 'Delete note' }).click();
   await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
   await expect(page.getByRole('button', { name: 'Open note: Image note' })).not.toBeVisible();
+});
+
+test('shows the simplified copy and gives sync its own dismissible dialog', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('searchbox')).toHaveAttribute('placeholder', 'Search your notes');
+  await expect(page.getByRole('button', { name: 'Add a note' })).toBeVisible();
+  await expect(page.getByText('Drag to reorder')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+  await page.getByRole('button', { name: 'Synced' }).click();
+  const syncDialog = page.getByRole('dialog', { name: 'Synced' });
+  await expect(syncDialog).toBeVisible();
+  await expect(syncDialog.getByRole('button', { name: 'Sign out' })).toHaveCount(0);
+  await syncDialog.getByRole('button', { name: 'Back' }).click();
+  await expect(syncDialog).not.toBeVisible();
+  await page.getByRole('button', { name: 'Synced' }).click();
+  await syncDialog.getByRole('button', { name: 'Sync now' }).click();
+  await expect(syncDialog).not.toBeVisible();
+  await page.getByRole('button', { name: 'Synced' }).click();
+  await page.keyboard.press('Escape');
+  await expect(syncDialog).not.toBeVisible();
+  await page.getByRole('button', { name: 'Add a note' }).click();
+  await page.getByRole('textbox', { name: 'Title' }).fill('Copy check');
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await page.getByRole('button', { name: 'Open note: Copy check' }).click();
+  const editor = page.getByRole('dialog', { name: 'Edit note' });
+  await expect(editor).toBeVisible();
+  await expect(editor.getByText('A little note')).toHaveCount(0);
+  await expect(editor.getByRole('button', { name: 'Pin note' })).toHaveText('');
+  await editor.getByRole('button', { name: 'Delete note' }).click();
+  await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
 });
 
 test('pins from the board and keeps pinned controls visible', async ({ page }) => {
@@ -74,13 +105,13 @@ test('pins from the board and keeps pinned controls visible', async ({ page }) =
   await page.getByRole('heading', { name: 'Your notes' }).click();
   await page.mouse.move(0, 0);
   await expect(pin).toHaveCSS('opacity', '0');
-  await expect(page.getByRole('dialog', { name: 'A little note' })).not.toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Edit note' })).not.toBeVisible();
 });
 
 test('drags notes into a persistent order and supports keyboard reordering', async ({ page }) => {
   await page.goto('/');
   for (const title of ['Order one', 'Order two', 'Order three']) {
-    await page.getByRole('button', { name: 'A thought worth keeping…' }).click();
+    await page.getByRole('button', { name: 'Add a note' }).click();
     await page.getByRole('textbox', { name: 'Title' }).fill(title);
     await page.getByRole('button', { name: 'Close note' }).click();
   }
@@ -96,7 +127,7 @@ test('drags notes into a persistent order and supports keyboard reordering', asy
   await expect(page.locator('body > button[aria-hidden="true"]')).toBeVisible();
   await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
   await page.mouse.up();
-  await expect(page.getByRole('dialog', { name: 'A little note' })).not.toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Edit note' })).not.toBeVisible();
   await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.reload();
@@ -145,7 +176,7 @@ test.describe('touch reordering', () => {
     await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await first.tap();
-    await expect(page.getByRole('dialog', { name: 'A little note' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Edit note' })).toBeVisible();
   });
 });
 
@@ -187,7 +218,7 @@ test('accepts an image and keeps the editor textarea fixed', async ({ page }) =>
 
 test('confirms removal of draft and saved images without removing them on cancel', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'A thought worth keeping…' }).click();
+  await page.getByRole('button', { name: 'Add a note' }).click();
   await page.getByRole('textbox', { name: 'Title' }).fill('Image removal test');
   await page.getByRole('button', { name: 'Attach an image' }).click();
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
@@ -239,7 +270,7 @@ for (const width of [390, 1440]) {
     await expect(preview.getByRole('img')).toBeVisible();
     await preview.getByRole('button', { name: 'Close image preview' }).click();
     await expect(preview).not.toBeVisible();
-    await expect(page.getByRole('dialog', { name: 'A little note' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Edit note' })).toBeVisible();
   });
 }
 
@@ -419,10 +450,10 @@ test('offers a refresh when a new offline app version is waiting', async ({ page
   }
 });
 
-test('requires the owner password in a new browser profile', async ({ browser }) => {
+test('requires the owner password in a new browser profile', async ({ browser, baseURL }) => {
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4273/');
+  await page.goto(baseURL!);
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   await page.getByLabel('Password').fill('incorrect password value');
   await page.getByRole('button', { name: 'Open jot.' }).click();
