@@ -26,7 +26,7 @@ if (existsSync(clientDirectory)) {
 }
 
 const server = app.listen(environment.PORT, '0.0.0.0', () => {
-  console.log(`jot. listening on http://0.0.0.0:${environment.PORT}`);
+  console.log(`Shelf listening on http://0.0.0.0:${environment.PORT}`);
 });
 
 function shutdown() {

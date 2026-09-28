@@ -59,7 +59,7 @@ function UpdateNotice() {
   };
   if (!available) return null;
   return <div role="status" {...stylex.props(styles.updateNotice)}>
-    <span>A new version of jot. is ready. Finish editing before refreshing.</span>
+    <span>A new version of Shelf is ready. Finish editing before refreshing.</span>
     <button type="button" disabled={applying || !online} onClick={() => void refresh()} {...stylex.props(styles.updateButton)}>{applying ? 'Refreshing…' : 'Refresh app'}</button>
     <button type="button" aria-label="Remind me later" onClick={() => setAvailable(false)} {...stylex.props(styles.updateDismiss)}>Later</button>
   </div>;

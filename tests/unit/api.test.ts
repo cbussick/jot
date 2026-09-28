@@ -15,7 +15,7 @@ let agent: Agent;
 const password = 'correct horse battery staple';
 
 beforeEach(async () => {
-  directory = await mkdtemp(join(tmpdir(), 'jot-test-'));
+  directory = await mkdtemp(join(tmpdir(), 'shelf-test-'));
   const environment: Environment = { NODE_ENV: 'test', PORT: 3000, DATA_DIR: directory, SESSION_DAYS: 30 };
   database = openDatabase(environment);
   app = createApp(database, environment);
@@ -51,8 +51,8 @@ describe('authentication gates', () => {
   it('accepts an HTTPS origin when TLS terminates before the HTTP application', async () => {
     const response = await request(app)
       .post('/api/auth/setup')
-      .set('Host', 'jot.example.ts.net:4444')
-      .set('Origin', 'https://jot.example.ts.net:4444')
+      .set('Host', 'shelf.example.ts.net:4444')
+      .set('Origin', 'https://shelf.example.ts.net:4444')
       .send({ password: 'short' });
     expect(response.status).toBe(400);
     expect(response.body.error).not.toBe('Request origin is not allowed.');

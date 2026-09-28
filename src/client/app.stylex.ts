@@ -12,7 +12,6 @@ export const styles = stylex.create({
     '@media (max-width: 700px)': { minHeight: 134, padding: '19px 22px 17px', gap: 16, display: 'grid', gridTemplateColumns: '1fr auto', backgroundColor: colors.canvas, borderBottomWidth: 0 },
   },
   brand: { display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', fontSize: 38, lineHeight: 1, letterSpacing: -2, fontWeight: 800, minWidth: 200, '@media (max-width: 700px)': { fontSize: 32, gap: 10, minWidth: 0 } },
-  brandDot: { color: colors.green },
   brandMark: { display: 'block', position: 'relative', width: 34, height: 35, backgroundColor: '#f4d467', borderRadius: '8px 8px 12px 8px', transform: 'rotate(-8deg)', boxShadow: 'inset 0 -1px 0 #d6b84e', '@media (max-width: 700px)': { width: 29, height: 30 } },
   brandFold: { position: 'absolute', right: 0, bottom: 0, width: 12, height: 12, backgroundColor: '#d6b650', borderRadius: '5px 0 10px 0' },
   brandLine: { position: 'absolute', height: 2, width: 15, backgroundColor: '#786523', left: 9, top: 12, borderRadius: 2 },

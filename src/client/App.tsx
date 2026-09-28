@@ -198,7 +198,7 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
   const status = syncStatus(syncState, pending);
   return <>
     <a href="#main" {...stylex.props(styles.skipLink)}>Skip to notes</a>
-    <header {...stylex.props(styles.header)}><a href="/" aria-label="jot home" {...stylex.props(styles.brand)}><Brand/></a>
+    <header {...stylex.props(styles.header)}><a href="/" aria-label="Shelf home" {...stylex.props(styles.brand)}><Brand/></a>
       <search {...stylex.props(styles.search)}><Icon name="search"/><input id="search" type="search" aria-label="Search notes" placeholder="Search your notes" value={query} onChange={event => setQuery(event.target.value)} {...stylex.props(styles.searchInput)}/><kbd {...stylex.props(styles.searchKey)}>F</kbd></search>
       <div {...stylex.props(styles.accountActions)}><button type="button" aria-label={status.label} onClick={() => syncDialog.current?.showModal()} {...stylex.props(styles.syncButton)}><Icon name={status.icon}/><span>{status.label}</span></button><button type="button" onClick={() => void logout()} {...stylex.props(styles.signOutButton)}>Sign out</button></div>
     </header>
@@ -219,10 +219,10 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
 
 function syncStatus(state: SyncState, pending: number): { label: string; copy: string; icon: 'offline' | 'cloud-check' | 'refresh' } {
   if (state === 'syncing' || state === 'connecting') return { label: 'Syncing…', copy: 'Checking your server for changes.', icon: 'refresh' };
-  if (state === 'offline') return { label: pending ? 'Saved on device' : 'Offline', copy: pending ? `${pending} change${pending === 1 ? '' : 's'} will sync when jot. is open and connected.` : 'Your downloaded notes remain available on this device.', icon: 'offline' };
+  if (state === 'offline') return { label: pending ? 'Saved on device' : 'Offline', copy: pending ? `${pending} change${pending === 1 ? '' : 's'} will sync when Shelf is open and connected.` : 'Your downloaded notes remain available on this device.', icon: 'offline' };
   if (state === 'local' || pending) return { label: 'Saved on device', copy: `${pending} change${pending === 1 ? '' : 's'} still need${pending === 1 ? 's' : ''} to reach your server.`, icon: 'refresh' };
   if (state === 'error') return { label: 'Sync needs attention', copy: 'Your notes are safe on this device. Try syncing again.', icon: 'offline' };
   return { label: 'Synced', copy: 'This device and your server are up to date.', icon: 'cloud-check' };
 }
 
-function Loading() { return <main {...stylex.props(styles.loginPage)}><p>Opening jot…</p></main>; }
+function Loading() { return <main {...stylex.props(styles.loginPage)}><p>Opening Shelf…</p></main>; }
