@@ -64,7 +64,7 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     if (image.kind === 'retained') setRetainedImages(images => images.filter(item => item.id !== image.id));
     else setNewImages(files => files.filter((_, index) => index !== image.index));
   };
-  const addFiles = (files: FileList | null) => {
+  const addFiles = (files: FileList | File[] | null) => {
     if (!files?.length) return;
     const accepted: File[] = [];
     for (const file of files) {
@@ -74,6 +74,16 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     }
     if (retainedImages.length + newImages.length + accepted.length > 6) return setError('Up to 6 images per note.');
     setNewImages(current => [...current, ...accepted]);
+  };
+  const pasteImages = (event: React.ClipboardEvent<HTMLDialogElement>) => {
+    if (saving) return;
+    const items = [...event.clipboardData.items].filter(item => item.kind === 'file' && item.type.startsWith('image/'));
+    if (!items.length) return; // Leave normal text paste alone.
+    event.preventDefault();
+    addFiles(items.flatMap(item => {
+      const file = item.getAsFile();
+      return file ? [file] : [];
+    }));
   };
   const save = async () => {
     if (saving) return;
@@ -89,7 +99,7 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     }
   };
   return <>
-    <dialog ref={dialog} aria-label={note ? 'Edit note' : 'Add note'} onCancel={event => { if (event.target !== event.currentTarget) return; event.preventDefault(); requestClose(); }} onClick={event => { if (event.target !== event.currentTarget) return; const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) requestClose(); }} {...stylex.props(styles.dialog, styles.editor, styles[color])}>
+    <dialog ref={dialog} aria-label={note ? 'Edit note' : 'Add note'} onCancel={event => { if (event.target !== event.currentTarget) return; event.preventDefault(); requestClose(); }} onPaste={pasteImages} onClick={event => { if (event.target !== event.currentTarget) return; const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) requestClose(); }} {...stylex.props(styles.dialog, styles.editor, styles[color])}>
       <div {...stylex.props(styles.editorForm)}>
         <header {...stylex.props(styles.editorHeader)}><div {...stylex.props(styles.headerActions)}>
           {note && <button type="button" aria-label="Delete note" onClick={() => deleteDialog.current?.showModal()} {...stylex.props(styles.iconButton, styles.deleteIcon)}><Icon name="trash"/></button>}
