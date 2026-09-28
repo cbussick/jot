@@ -37,7 +37,7 @@ worker.addEventListener('fetch', event => {
       if (!files.length || files.length > 6 || files.some(value =>
         !(value instanceof File) ||
         !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(value.type) ||
-        value.size > 10 * 1024 * 1024 || value.size === 0
+        value.size > 20 * 1024 * 1024 || value.size === 0
       )) return Response.redirect('/?shareError=invalid', 303);
       const id = await stageShare(files as File[]);
       return Response.redirect(`/?share=${encodeURIComponent(id)}`, 303);

@@ -68,8 +68,8 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     if (!files?.length) return;
     const accepted: File[] = [];
     for (const file of files) {
-      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 10 * 1024 * 1024) {
-        setError('Choose a JPG, PNG, WebP or GIF under 10 MB.');
+      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 20 * 1024 * 1024) {
+        setError('Choose a JPG, PNG, WebP or GIF under 20 MB.');
       } else accepted.push(file);
     }
     if (retainedImages.length + newImages.length + accepted.length > 6) return setError('Up to 6 images per note.');

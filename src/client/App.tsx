@@ -89,7 +89,7 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     const id = params.get('share');
     const shareError = params.get('shareError');
     if (shareError) {
-      notify(shareError === 'invalid' ? 'Choose up to 6 JPG, PNG, WebP or GIF images under 10 MB.' : 'Could not receive the shared image. Try again.');
+      notify(shareError === 'invalid' ? 'Choose up to 6 JPG, PNG, WebP or GIF images under 20 MB.' : 'Could not receive the shared image. Try again.');
       history.replaceState(null, '', '/');
     }
     if (!id) return;

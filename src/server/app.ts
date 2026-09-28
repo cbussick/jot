@@ -21,7 +21,7 @@ const acceptedTypes = new Map([
 ]);
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024, files: 6, fields: 2 },
+  limits: { fileSize: 20 * 1024 * 1024, files: 6, fields: 2 },
 });
 
 export function createApp(database: AppDatabase, environment: Environment) {
@@ -191,7 +191,7 @@ export function createApp(database: AppDatabase, environment: Environment) {
   app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
     if (error instanceof ClientError) return response.status(400).json({ error: error.message });
     if (error instanceof ZodError) return response.status(400).json({ error: 'Invalid request.', issues: error.issues });
-    if (error instanceof multer.MulterError) return response.status(400).json({ error: error.code === 'LIMIT_FILE_SIZE' ? 'Images must be under 10 MB.' : error.message });
+    if (error instanceof multer.MulterError) return response.status(400).json({ error: error.code === 'LIMIT_FILE_SIZE' ? 'Images must be under 20 MB.' : error.message });
     console.error(error);
     response.status(500).json({ error: 'Something went wrong.' });
   });
