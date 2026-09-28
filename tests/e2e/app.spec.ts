@@ -135,7 +135,7 @@ test('keeps the mobile create action visible while the header sticks', async ({ 
   expect(await page.locator('#root > header').evaluate(element => element.getBoundingClientRect().top)).toBe(0);
 });
 
-test('pins from the board and keeps pinned controls visible', async ({ page }) => {
+test('pins from the board and shows pin controls on hover for both groups', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
   await page.keyboard.press('n');
@@ -159,11 +159,16 @@ test('pins from the board and keeps pinned controls visible', async ({ page }) =
   await pin.click();
   const unpin = page.getByRole('button', { name: 'Unpin note: Board pin test' });
   await expect(unpin.locator('svg path').first()).toHaveAttribute('fill', 'currentColor');
+  await page.getByRole('heading', { name: 'Pinned', exact: true }).click();
   await page.mouse.move(0, 0);
+  await expect(unpin).toHaveCSS('opacity', '0');
+  await card.hover();
   await expect(unpin).toHaveCSS('opacity', '1');
-  await expect(page.getByRole('heading', { name: 'Pinned', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.reload();
+  await page.mouse.move(0, 0);
+  await expect(unpin).toHaveCSS('opacity', '0');
+  await card.hover();
   await expect(unpin).toHaveCSS('opacity', '1');
   await unpin.click();
   await page.getByRole('heading', { name: 'Your notes' }).click();
