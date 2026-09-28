@@ -19,25 +19,29 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = { source: id, startX: event.clientX, startY: event.clientY };
   };
+  const noteAt = (event: React.PointerEvent) => {
+    const item = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-item-id]');
+    return item && board.current?.contains(item) ? item.dataset.itemId : undefined;
+  };
   const move = (event: React.PointerEvent) => {
     const active = drag.current;
     if (!active) return;
     if (Math.hypot(event.clientX - active.startX, event.clientY - active.startY) < 6 && !active.target) return;
-    const item = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-item-id]');
-    const id = item && board.current?.contains(item) ? item.dataset.itemId : undefined;
+    const id = noteAt(event);
     active.target = id !== active.source ? id : undefined;
     setTarget(active.target);
   };
-  const end = () => {
+  const end = (event: React.PointerEvent) => {
     const active = drag.current;
     drag.current = null; setTarget(undefined);
-    if (active?.target) onReorder(active.source, active.target);
+    const id = noteAt(event);
+    if (active && id && id !== active.source) onReorder(active.source, id);
   };
   return <section {...stylex.props(styles.section)}>
     {heading && <h2 {...stylex.props(styles.sectionHeading)}>{heading}</h2>}
     <ul ref={board} aria-label={label} {...stylex.props(styles.board)}>
       {notes.map((note, index) => <NoteCard key={note.id} note={note} onOpen={onOpen} onPin={onPin} dropTarget={target === note.id}
-        onPointerDown={event => start(event, note.id)} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
+        onPointerDown={event => start(event, note.id)} onPointerMove={move} onPointerUp={end} onPointerCancel={() => { drag.current = null; setTarget(undefined); }}
         onKeyDown={event => {
           if (event.key !== 'ArrowLeft' && event.key !== 'ArrowUp' && event.key !== 'ArrowRight' && event.key !== 'ArrowDown') return;
           event.preventDefault();
@@ -52,7 +56,7 @@ function NoteCard({ note, onOpen, onPin, dropTarget, onPointerDown, onPointerMov
   note: LocalNote; onOpen: (note: LocalNote) => void; onPin: (note: LocalNote) => void; dropTarget: boolean;
   onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void;
-  onPointerUp: () => void; onPointerCancel: () => void; onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
+  onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void; onPointerCancel: () => void; onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   const image = note.images[0];
   return <li data-item-id={note.id} {...stylex.props(styles.noteItem, dropTarget && styles.dropTarget)}>

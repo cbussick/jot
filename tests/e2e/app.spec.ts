@@ -88,12 +88,7 @@ test('drags notes into a persistent order and supports keyboard reordering', asy
   const board = page.getByRole('list', { name: 'Notes' });
   const titles = async () => (await board.getByRole('button', { name: /^Open note:/ }).allTextContents()).filter(text => text.includes('Order '));
   const first = page.getByRole('button', { name: 'Move note: Order one. Drag or use arrow keys' });
-  const start = await first.boundingBox();
-  const end = await page.getByRole('button', { name: 'Open note: Order three' }).boundingBox();
-  await page.mouse.move(start!.x + 18, start!.y + 18);
-  await page.mouse.down();
-  await page.mouse.move(end!.x + end!.width / 2, end!.y + end!.height / 2, { steps: 8 });
-  await page.mouse.up();
+  await first.dragTo(page.getByRole('button', { name: 'Open note: Order three' }));
   await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.reload();
@@ -297,6 +292,24 @@ test('mobile create controls never cover notes while scrolling', async ({ page }
     return cards.some(card => card.left < nav.right && card.right > nav.left && card.top < nav.bottom && card.bottom > nav.top);
   });
   expect(overlap).toBe(false);
+});
+
+test('serves the service worker and page shell without browser HTTP caching', async ({ request }) => {
+  for (const path of ['/sw.js', '/', '/share-target']) {
+    const response = await request.get(path);
+    expect(response.ok()).toBe(true);
+    expect(response.headers()['cache-control']).toContain('no-store');
+  }
+});
+
+test('GET share-target bypasses cached navigation for older installed versions', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+  const response = await page.goto('/share-target');
+  expect(response?.fromServiceWorker()).toBe(false);
+  await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
 });
 
 test('offers a refresh when a new offline app version is waiting', async ({ page }) => {

@@ -95,7 +95,7 @@ git pull
 docker compose up -d --build
 ```
 
-The PWA downloads frontend updates in the background and offers a **Refresh app** button when one is ready. Finish editing before refreshing; updates never force a reload mid-note. If an older installed version does not show the prompt, close all jot. windows and reopen it to allow its waiting service worker to activate. Do not clear browser site data to update the app: that data may include unsynced notes.
+The PWA downloads frontend updates in the background and offers a **Refresh app** button when one is ready. Finish editing before refreshing; updates never force a reload mid-note. If an older installed version does not show the prompt, open `/share-target` in the browser (GET is a read-only page load). This URL bypasses the old worker's cached navigation and loads the latest page; you can then use **Refresh app** if offered. Close and reopen the installed app afterwards. Do not clear browser site data to update the app: that data may include unsynced notes.
 
 ## Share screenshots from Android
 

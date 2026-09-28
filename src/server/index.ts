@@ -12,8 +12,17 @@ const clientDirectory = resolve('dist/client');
 
 app.get('/healthz', (_request, response) => response.json({ ok: true }));
 if (existsSync(clientDirectory)) {
-  app.use(express.static(clientDirectory, { index: false, maxAge: environment.NODE_ENV === 'production' ? '1h' : 0 }));
-  app.get(/^(?!\/api\/).*/, (_request, response) => response.sendFile('index.html', { root: clientDirectory }));
+  app.use(express.static(clientDirectory, {
+    index: false,
+    maxAge: environment.NODE_ENV === 'production' ? '1h' : 0,
+    setHeaders(response, path) {
+      if (path.endsWith('/sw.js') || path.endsWith('/index.html')) response.setHeader('Cache-Control', 'no-store');
+    },
+  }));
+  app.get(/^(?!\/api\/).*/, (_request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    response.sendFile('index.html', { root: clientDirectory });
+  });
 }
 
 const server = app.listen(environment.PORT, '0.0.0.0', () => {
