@@ -139,7 +139,7 @@ function ImagePreview({ gallery, index, onIndexChange, onRemove, onClose }: {
   </dialog>;
 }
 
-function ConfirmDialog({ ref, title, copy, cancel, confirm, onConfirm }: {
+export function ConfirmDialog({ ref, title, copy, cancel, confirm, onConfirm }: {
   ref: React.RefObject<HTMLDialogElement | null>; title: string; copy: string; cancel: string; confirm: string; onConfirm: () => void | Promise<void>;
 }) {
   const headingId = `${confirm.toLowerCase().replaceAll(' ', '-')}-heading`;
