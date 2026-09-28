@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/isolated-test';
 
 test('release after a reordered card loses capture clears the floating preview', async ({ page }) => {
   const suffix = crypto.randomUUID();

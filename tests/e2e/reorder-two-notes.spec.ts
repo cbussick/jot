@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/isolated-test';
 
 test('two notes can be dragged to swap and dragged back', async ({ page }) => {
   const suffix = crypto.randomUUID();
