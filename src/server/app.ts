@@ -102,12 +102,12 @@ export function createApp(database: AppDatabase, environment: Environment) {
     catch { return response.status(400).json({ error: 'Invalid note payload.' }); }
     const input = noteWriteSchema.parse(rawPayload);
     if (input.id !== id) return response.status(400).json({ error: 'Note ID does not match the URL.' });
-    if (!input.title && !input.body && input.retainedImageIds.length + files.length === 0) {
-      return response.status(400).json({ error: 'Add some text or an image first.' });
-    }
     if (input.retainedImageIds.length + files.length > 6) return response.status(400).json({ error: 'Up to 6 images per note.' });
 
     const current = readNote(database, id);
+    if (!current && !input.title && !input.body && input.retainedImageIds.length + files.length === 0) {
+      return response.status(400).json({ error: 'Add some text or an image first.' });
+    }
     if ((current?.version ?? 0) !== input.expectedVersion) {
       return response.status(409).json({ error: 'This note changed on another device.', note: current });
     }

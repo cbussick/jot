@@ -21,14 +21,40 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Open note: Keep this close' }).click();
   await page.getByRole('textbox', { name: 'Note', exact: true }).fill('An edited private thought.');
-  await page.getByRole('button', { name: 'Save note' }).click();
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await expect(page.getByRole('dialog', { name: 'Leave without saving?' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'A little note' })).not.toBeVisible();
   await page.getByRole('searchbox').fill('edited private');
   await expect(page.getByText('An edited private thought.')).toBeVisible();
   await page.getByRole('searchbox').fill('');
   await page.getByRole('button', { name: 'Open note: Keep this close' }).click();
+  await page.getByRole('textbox', { name: 'Title' }).fill('');
+  await page.getByRole('textbox', { name: 'Note', exact: true }).fill('');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'A little note' })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open note: Image note' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Open note: Image note' }).click();
   await page.getByRole('button', { name: 'Delete note' }).click();
   await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
-  await expect(page.getByRole('button', { name: 'Open note: Keep this close' })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open note: Image note' })).not.toBeVisible();
+});
+
+test('saves a new text note when closed', async ({ page }) => {
+  await page.goto('/');
+  await page.keyboard.press('n');
+  await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Saved by closing');
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await expect(page.getByRole('button', { name: 'Open note: Saved by closing' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+});
+
+test('closes empty drafts without creating a note', async ({ page }) => {
+  await page.goto('/');
+  await page.keyboard.press('n');
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await expect(page.getByRole('dialog', { name: 'Something worth keeping' })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open note:', exact: false })).toHaveCount(0);
 });
 
 test('accepts an image and keeps the editor textarea fixed', async ({ page }) => {
@@ -75,7 +101,7 @@ for (const width of [390, 1440]) {
   });
 }
 
-test('receives an Android share as an unsaved draft, supports editing, and discards on cancel', async ({ page }) => {
+test('receives an Android share as a draft and saves it on close', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload();
@@ -104,9 +130,9 @@ test('receives an Android share as an unsaved draft, supports editing, and disca
   await page.goto(first);
   await expect(page.getByRole('dialog', { name: 'Something worth keeping' }).getByRole('img')).toHaveCount(1);
   await page.getByRole('button', { name: 'Close note' }).click();
-  const discard = page.getByRole('dialog', { name: 'Leave without saving?' });
-  if (await discard.isVisible()) await discard.getByRole('button', { name: 'Discard changes' }).click();
+  await expect(page.getByRole('dialog', { name: 'Leave without saving?' })).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: 'Something worth keeping' })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open note: image.jpg' })).toBeVisible();
   expect(new URL(page.url()).search).toBe('');
   await page.goto(first);
   await expect(page.getByRole('status')).toContainText('no longer available');
@@ -117,8 +143,8 @@ test('receives an Android share as an unsaved draft, supports editing, and disca
   await page.getByRole('button', { name: 'Attach an image' }).click();
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
   await expect(page.getByRole('dialog', { name: 'Something worth keeping' }).getByRole('img')).toHaveCount(2);
-  await expect(page.getByRole('dialog', { name: 'Leave without saving?' })).not.toBeVisible();
-  await page.getByRole('button', { name: 'Save note' }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Something worth keeping' })).not.toBeVisible();
   await expect(page.getByRole('button', { name: 'Open note: Shared screenshot note' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.goto(second);

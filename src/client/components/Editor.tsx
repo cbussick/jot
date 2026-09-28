@@ -18,7 +18,6 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
   onDelete: (note: LocalNote) => Promise<void>; onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const discardDialog = useRef<HTMLDialogElement>(null);
   const deleteDialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(note?.title ?? '');
@@ -41,7 +40,13 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     dialog.current?.showModal();
     return () => dialog.current?.close();
   }, []);
-  const requestClose = () => dirty ? discardDialog.current?.showModal() : onClose();
+  const requestClose = () => {
+    if (saving) return;
+    if (!dirty && note) return onClose();
+    // An empty draft has nothing to keep; shared images do.
+    if (!note && !title.trim() && !body.trim() && retainedImages.length + newImages.length === 0) return onClose();
+    void save();
+  };
   const addFiles = (files: FileList | null) => {
     if (!files?.length) return;
     const accepted: File[] = [];
@@ -53,11 +58,11 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     if (retainedImages.length + newImages.length + accepted.length > 6) return setError('Up to 6 images per note.');
     setNewImages(current => [...current, ...accepted]);
   };
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const save = async () => {
+    if (saving) return;
     const cleanTitle = title.trim();
     const cleanBody = body.trim();
-    if (!cleanTitle && !cleanBody && retainedImages.length + newImages.length === 0) return setError('Add some text or an image first.');
+    if (!note && !cleanTitle && !cleanBody && retainedImages.length + newImages.length === 0) return setError('Add some text or an image first.');
     setSaving(true); setError('');
     try {
       await onSave({ id: note?.id, title: cleanTitle, body: cleanBody, color, pinned, retainedImages, newImages, version: note?.version, createdAt: note?.createdAt });
@@ -67,6 +72,7 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
       setSaving(false);
     }
   };
+  const submit = (event: React.FormEvent) => { event.preventDefault(); void save(); };
   return <>
     <dialog ref={dialog} aria-labelledby="editor-heading" onCancel={event => { if (event.target !== event.currentTarget) return; event.preventDefault(); requestClose(); }} {...stylex.props(styles.dialog, styles.editor, styles[color])}>
       <form onSubmit={submit} {...stylex.props(styles.editorForm)}>
@@ -91,7 +97,6 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
       </form>
     </dialog>
     {preview && <ImagePreview preview={preview} onClose={() => setPreview(null)}/>}
-    <ConfirmDialog ref={discardDialog} title="Leave without saving?" copy="Your changes to this note will be lost." cancel="Keep editing" confirm="Discard changes" onConfirm={onClose}/>
     <ConfirmDialog ref={deleteDialog} title="Delete this note?" copy="This is permanent. There’s no trash to come back to." cancel="Keep note" confirm="Delete note" onConfirm={() => note && onDelete(note)}/>
   </>;
 }

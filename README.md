@@ -99,7 +99,7 @@ The PWA downloads frontend updates in the background. It does not force a reload
 
 ## Share screenshots from Android
 
-On an Android phone or tablet, install jot. from Chrome while connected to its HTTPS URL. In your screenshots or photos app, tap **Share → jot.** The image opens in a new, unsaved note: add text or more images, then tap **Save note**. Closing the draft discards the share. Shares received offline can be saved on the device and will sync when jot. is open and connected again. If jot. was installed before this feature was deployed, you may need to reinstall it for Android to register the new share target.
+On an Android phone or tablet, install jot. from Chrome while connected to its HTTPS URL. In your screenshots or photos app, tap **Share → jot.** The image opens in a new note: add text or more images, then tap **Save note** or close the note to save it. Closing an empty draft without images does not create a note. Shares received offline can be saved on the device and will sync when jot. is open and connected again. If jot. was installed before this feature was deployed, you may need to reinstall it for Android to register the new share target.
 
 This requires a browser that supports Web Share Target (such as Chrome on Android). iOS/iPadOS PWAs cannot currently appear in the system share sheet; use **Add an image** in jot. instead.
 
