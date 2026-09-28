@@ -79,7 +79,9 @@ test('shows created and updated times only inside an existing note', async ({ pa
 test('shows the simplified copy and gives sync its own dismissible dialog', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('searchbox')).toHaveAttribute('placeholder', 'Search your notes');
-  await expect(page.getByRole('button', { name: 'Add a note' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Create a note' }).getByRole('button', { name: 'New note' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add an image' })).toBeVisible();
+  await expect(page.getByText('All notes')).toHaveCount(0);
   await expect(page.getByText('Drag to reorder')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
@@ -95,7 +97,7 @@ test('shows the simplified copy and gives sync its own dismissible dialog', asyn
   await page.getByRole('button', { name: 'Synced' }).click();
   await page.keyboard.press('Escape');
   await expect(syncDialog).not.toBeVisible();
-  await page.getByRole('button', { name: 'Add a note' }).click();
+  await page.getByRole('button', { name: 'New note' }).click();
   await page.getByRole('textbox', { name: 'Title' }).fill('Copy check');
   await page.getByRole('button', { name: 'Close note' }).click();
   await page.getByRole('button', { name: 'Open note: Copy check' }).click();
@@ -107,13 +109,13 @@ test('shows the simplified copy and gives sync its own dismissible dialog', asyn
   await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
 });
 
-test('keeps the header and floating create action visible even when the top capture is in view', async ({ page }) => {
+test('keeps the header and floating create action visible while scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 700 });
   await page.goto('/');
   await page.locator('#main').evaluate(main => { main.style.minHeight = '200vh'; });
   const header = page.locator('#root > header');
   const floating = page.getByRole('navigation', { name: 'Create a note' });
-  await expect(page.getByRole('button', { name: 'Add a note' })).toBeVisible();
+  await expect(floating.getByRole('button', { name: 'New note' })).toBeVisible();
   await expect(floating).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 300));
   await expect(floating).toBeVisible();
@@ -173,7 +175,7 @@ test('pins from the board and keeps pinned controls visible', async ({ page }) =
 
 test('right-click note actions open, pin, and confirm deletion', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Add a note' }).click();
+  await page.getByRole('button', { name: 'New note' }).click();
   await page.getByRole('textbox', { name: 'Title' }).fill('Context actions test');
   await page.getByRole('button', { name: 'Close note' }).click();
   const card = page.getByRole('button', { name: 'Open note: Context actions test' });
@@ -209,7 +211,7 @@ test('drags notes into a persistent order and supports keyboard reordering', asy
   const [one, two, three] = ['one', 'two', 'three'].map(label => `Order ${label} ${suffix}`);
   await page.goto('/');
   for (const title of [one, two, three]) {
-    await page.getByRole('button', { name: 'Add a note' }).click();
+    await page.getByRole('button', { name: 'New note' }).click();
     await page.getByRole('textbox', { name: 'Title' }).fill(title);
     await page.getByRole('button', { name: 'Close note' }).click();
     await expect(page.getByRole('button', { name: `Open note: ${title}` })).toBeVisible();
@@ -290,7 +292,7 @@ test.describe('touch reordering', () => {
   test('does not open note actions on a touchscreen with a desktop-sized viewport', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Add a note' }).click();
+    await page.getByRole('button', { name: 'New note' }).click();
     await page.getByRole('textbox', { name: 'Title' }).fill('Hybrid touch note');
     await page.getByRole('button', { name: 'Close note' }).click();
     await page.getByRole('button', { name: 'Open note: Hybrid touch note' }).click({ button: 'right' });
@@ -321,7 +323,7 @@ test('closes empty drafts without creating a note', async ({ page }) => {
 test('accepts an image and keeps the editor textarea fixed', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Add an image' }).first().click();
+  await page.getByRole('button', { name: 'Add an image' }).click();
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
   const textarea = page.getByRole('textbox', { name: 'Note', exact: true });
   const before = await textarea.boundingBox();
@@ -336,7 +338,7 @@ test('accepts an image and keeps the editor textarea fixed', async ({ page }) =>
 
 test('pastes clipboard images into new and existing notes without disrupting text paste', async ({ page, context }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Add a note' }).click();
+  await page.getByRole('button', { name: 'New note' }).click();
   const body = page.getByRole('textbox', { name: 'Note', exact: true });
   await body.focus();
   const textPasteAllowed = await body.evaluate(element => {
@@ -389,7 +391,7 @@ test('pastes clipboard images into new and existing notes without disrupting tex
 
 test('closes notes from the footer or backdrop, and keeps destructive actions in the header', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Add a note' }).click();
+  await page.getByRole('button', { name: 'New note' }).click();
   const editor = page.getByRole('dialog', { name: 'Add note' });
   await expect(editor.getByText('Something worth keeping')).toHaveCount(0);
   await editor.getByRole('textbox', { name: 'Title' }).fill('Dismissible note');
@@ -413,7 +415,7 @@ test('closes notes from the footer or backdrop, and keeps destructive actions in
 
 test('confirms removal of draft and saved images without removing them on cancel', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Add a note' }).click();
+  await page.getByRole('button', { name: 'New note' }).click();
   await page.getByRole('textbox', { name: 'Title' }).fill('Image removal test');
   await page.getByRole('button', { name: 'Attach an image' }).click();
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
@@ -478,7 +480,7 @@ for (const width of [390, 1440]) {
 
 test('centers images and navigates and removes mixed gallery images', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Add a note' }).click();
+  await page.getByRole('button', { name: 'New note' }).click();
   await page.getByRole('textbox', { name: 'Title' }).fill('Gallery note');
   await page.getByRole('button', { name: 'Attach an image' }).click();
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
@@ -525,7 +527,7 @@ test('shows the same image mosaic on cards and in the editor', async ({ page }) 
   await page.goto('/');
   for (const count of [2, 3, 4, 5, 6]) {
     const title = `Mosaic ${count}`;
-    await page.getByRole('button', { name: 'Add a note' }).click();
+    await page.getByRole('button', { name: 'New note' }).click();
     await page.getByRole('textbox', { name: 'Title' }).fill(title);
     await page.getByRole('button', { name: 'Attach an image' }).click();
     await page.locator('input[type=file]').last().setInputFiles(Array(count).fill('tests/fixtures/image.jpg'));
@@ -688,7 +690,7 @@ for (const width of [390, 1280]) {
   test(`create controls leave the last notes clear at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/');
-    await page.getByRole('button', { name: width === 390 ? 'New note' : 'Add a note' }).click();
+    await page.getByRole('button', { name: 'New note' }).click();
     await page.getByRole('textbox', { name: 'Title' }).fill(`Tall note ${width}`);
     await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Long thought. '.repeat(180));
     await page.getByRole('button', { name: 'Close note' }).click();
