@@ -35,6 +35,7 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
   const [pending, setPending] = useState(0);
   const [toast, setToast] = useState('');
   const syncing = useRef(false);
+  const syncRequested = useRef(false);
   const imageInput = useRef<HTMLInputElement>(null);
   const syncDialog = useRef<HTMLDialogElement>(null);
   const deleteDialog = useRef<HTMLDialogElement>(null);
@@ -53,16 +54,23 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     setToast(message); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), 3500);
   }, []);
   const synchronize = useCallback(async () => {
-    if (syncing.current) return;
+    if (syncing.current) { syncRequested.current = true; return; }
     syncing.current = true;
-    setSyncState(navigator.onLine ? 'syncing' : 'offline');
     try {
-      const result = await syncNotes();
-      setNotes(result.notes); setPending(result.pending);
-      setSyncState(result.pending ? 'local' : navigator.onLine ? 'synced' : 'offline');
-      if (result.conflict) notify('Both versions were kept after a conflicting edit.');
-    } catch (error) {
-      setSyncState(error instanceof ApiError && error.status === 0 ? 'offline' : 'error');
+      do {
+        syncRequested.current = false;
+        setSyncState(navigator.onLine ? 'syncing' : 'offline');
+        try {
+          const result = await syncNotes();
+          if (!syncRequested.current) {
+            setNotes(result.notes); setPending(result.pending);
+            setSyncState(result.pending ? 'local' : navigator.onLine ? 'synced' : 'offline');
+          }
+          if (result.conflict) notify('Both versions were kept after a conflicting edit.');
+        } catch (error) {
+          setSyncState(error instanceof ApiError && error.status === 0 ? 'offline' : 'error');
+        }
+      } while (syncRequested.current);
     } finally { syncing.current = false; }
   }, [notify]);
 
