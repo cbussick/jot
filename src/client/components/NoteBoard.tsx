@@ -176,10 +176,10 @@ function NoteCard({ note, onCardClick, onPin, onContextMenu, dropTarget, onPoint
   const content = <>
     {note.images.length === 1 && <LocalPhoto image={image}/>}
     {note.images.length > 1 && <ImageMosaic images={note.images.map(item => <LocalPhoto key={item.id} image={item} className={stylex.props(styles.mosaicPhoto).className}/>)}/>}
-    <span {...stylex.props(styles.noteContent, image && styles.imageContent, hasLinks && styles.linkedContent)}>
+    {(note.title || note.body) && <span {...stylex.props(styles.noteContent, image && styles.imageContent, hasLinks && styles.linkedContent)}>
       {note.title && <span {...stylex.props(styles.noteTitle)}>{hasLinks ? <LinkedText parts={titleParts}/> : note.title}</span>}
       {note.body && <span {...stylex.props(styles.noteBody)}>{hasLinks ? <LinkedText parts={bodyParts}/> : note.body}</span>}
-    </span>
+    </span>}
   </>;
   const buttonProps = {
     type: 'button' as const, 'data-note-id': note.id,
