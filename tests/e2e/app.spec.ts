@@ -257,7 +257,7 @@ test('confirms removal of draft and saved images without removing them on cancel
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
   await page.getByRole('button', { name: 'Close note' }).click();
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
-  await page.getByRole('button', { name: 'Open note: Image removal test' }).click();
+  await page.getByRole('button', { name: 'Open note: Image removal test', exact: true }).click();
   await page.getByRole('button', { name: 'Remove image 1' }).click();
   await expect(confirmation).toBeVisible();
   await page.keyboard.press('Escape');
@@ -267,7 +267,7 @@ test('confirms removal of draft and saved images without removing them on cancel
   await expect(page.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Close note' }).click();
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
-  await page.getByRole('button', { name: 'Open note: Image removal test' }).click();
+  await page.getByRole('button', { name: 'Open note: Image removal test', exact: true }).click();
   await expect(page.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
 });
 
@@ -312,7 +312,7 @@ test('centers images and navigates and removes mixed gallery images', async ({ p
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
-  await page.getByRole('button', { name: 'Open note: Gallery note' }).click();
+  await page.getByRole('button', { name: 'Open note: Gallery note', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   const bounds = await editor.boundingBox();
   const photo = await editor.getByRole('button', { name: 'View image 1' }).boundingBox();
@@ -342,10 +342,59 @@ test('centers images and navigates and removes mixed gallery images', async ({ p
   await expect(editor.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
   await editor.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
-  await page.getByRole('button', { name: 'Open note: Gallery note' }).click();
+  await page.getByRole('button', { name: 'Open note: Gallery note', exact: true }).click();
   await expect(page.getByRole('button', { name: 'View image 1' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Delete note' }).click();
   await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
+});
+
+test('shows the same image mosaic on cards and in the editor', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/');
+  for (const count of [2, 3, 4, 5, 6]) {
+    const title = `Mosaic ${count}`;
+    await page.getByRole('button', { name: 'Add a note' }).click();
+    await page.getByRole('textbox', { name: 'Title' }).fill(title);
+    await page.getByRole('button', { name: 'Attach an image' }).click();
+    await page.locator('input[type=file]').last().setInputFiles(Array(count).fill('tests/fixtures/image.jpg'));
+    const editor = page.getByRole('dialog', { name: 'Something worth keeping' });
+    const tiles = editor.getByRole('button', { name: /^View image/ });
+    await expect(tiles).toHaveCount(Math.min(count, 4));
+    const boxes = await Promise.all((await tiles.all()).map(tile => tile.boundingBox()));
+    expect(boxes[0]!.y).toBe(boxes[1]!.y);
+    expect(boxes[0]!.x).toBeLessThan(boxes[1]!.x);
+    if (count === 3) {
+      expect(boxes[2]!.y).toBeGreaterThan(boxes[0]!.y);
+      expect(boxes[2]!.width).toBeGreaterThan(boxes[0]!.width * 1.9);
+    }
+    if (count >= 4) {
+      expect(boxes[2]!.y).toBeGreaterThan(boxes[0]!.y);
+      expect(boxes[2]!.x).toBe(boxes[0]!.x);
+      expect(boxes[3]!.x).toBe(boxes[1]!.x);
+    }
+    if (count > 4) await expect(editor.getByText(`${count - 4} more ${count === 5 ? 'image' : 'images'}`)).toBeVisible();
+    if (count === 6) {
+      await editor.getByRole('button', { name: 'View image 4' }).click();
+      const preview = page.getByRole('dialog', { name: 'Image preview' });
+      await preview.getByRole('button', { name: 'Next image' }).click();
+      await expect(preview.getByText('5 / 6')).toBeVisible();
+      await preview.getByRole('button', { name: 'Close image preview' }).click();
+    }
+    await editor.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 15_000 });
+    const card = page.getByRole('button', { name: `Open note: ${title}` });
+    await expect(card.locator('img')).toHaveCount(Math.min(count, 4));
+    const cardBoxes = await card.evaluate(element => Array.from(element.querySelectorAll('img'), image => image.getBoundingClientRect().toJSON()));
+    expect(cardBoxes[0].width).toBeGreaterThan(0);
+    expect(cardBoxes[0].y).toBe(cardBoxes[1].y);
+    if (count === 3) expect(cardBoxes[2].width).toBeGreaterThan(cardBoxes[0].width * 1.9);
+    if (count > 4) await expect(card.getByText(`${count - 4} more ${count === 5 ? 'image' : 'images'}`)).toBeVisible();
+    await card.click();
+    await page.getByRole('button', { name: 'Delete note' }).click();
+    await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
+    await expect(card).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 15_000 });
+  }
 });
 
 test('receives an Android share as a draft and saves it on close', async ({ page }) => {

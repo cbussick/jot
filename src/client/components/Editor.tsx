@@ -5,6 +5,7 @@ import { styles } from '../app.stylex';
 import type { LocalImage, LocalNote } from '../local-store';
 import { LocalPhoto } from './NoteBoard';
 import { Icon } from './Icon';
+import { ImageMosaic } from './ImageMosaic';
 
 const colors: NoteColor[] = ['paper', 'butter', 'mint', 'lilac', 'peach'];
 
@@ -95,9 +96,11 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
           <button type="button" aria-label={pinned ? 'Unpin note' : 'Pin note'} aria-pressed={pinned} onClick={() => setPinned(value => !value)} {...stylex.props(styles.pinText, pinned && styles.pinned)}><Icon name="pin" width={18}/></button>
           <button type="button" aria-label="Close note" disabled={saving} onClick={requestClose} {...stylex.props(styles.iconButton)}><Icon name="x"/></button>
         </div></header>
-        {(retainedImages.length > 0 || newImages.length > 0) && <div {...stylex.props(styles.editorImages)}>
-          {gallery.map((item, index) => <div key={'image' in item ? item.image.id : item.src} {...stylex.props(styles.editorImage, index === 0 && styles.editorImageCentered, index === gallery.length - 1 && styles.editorImageEnd)}><button type="button" aria-label={`View image ${index + 1}`} onClick={() => setPreviewIndex(index)} {...stylex.props(styles.photoButton)}>{'image' in item ? <LocalPhoto image={item.image} className={stylex.props(styles.editorPhoto).className}/> : <img src={item.src} alt={item.alt} {...stylex.props(styles.editorPhoto)}/>}</button><button type="button" aria-label={`Remove image ${index + 1}`} onClick={() => requestImageRemoval(item.removal)} {...stylex.props(styles.imageRemove)}><Icon name="trash" width={18}/></button></div>)}
-        </div>}
+        {gallery.length === 1 && <div {...stylex.props(styles.editorImages)}><div {...stylex.props(styles.editorImage, styles.editorImageCentered, styles.editorImageEnd)}>
+          <button type="button" aria-label="View image 1" onClick={() => setPreviewIndex(0)} {...stylex.props(styles.photoButton)}>{'image' in gallery[0] ? <LocalPhoto image={gallery[0].image} className={stylex.props(styles.editorPhoto).className}/> : <img src={gallery[0].src} alt={gallery[0].alt} {...stylex.props(styles.editorPhoto)}/>}</button>
+          <button type="button" aria-label="Remove image 1" onClick={() => requestImageRemoval(gallery[0].removal)} {...stylex.props(styles.imageRemove)}><Icon name="trash" width={18}/></button>
+        </div></div>}
+        {gallery.length > 1 && <ImageMosaic editor images={gallery.map(item => 'image' in item ? <LocalPhoto key={item.image.id} image={item.image} className={stylex.props(styles.mosaicPhoto).className}/> : <img key={item.src} src={item.src} alt={item.alt} {...stylex.props(styles.mosaicPhoto)}/>)} onOpen={setPreviewIndex} onRemove={index => requestImageRemoval(gallery[index].removal)}/>}
         <div {...stylex.props(styles.editorFields)}>
           <label className="sr-only" htmlFor="note-title">Title</label><input id="note-title" maxLength={160} placeholder="Title" value={title} onChange={event => setTitle(event.target.value)} {...stylex.props(styles.titleInput)}/>
           <label className="sr-only" htmlFor="note-body">Note</label><textarea id="note-body" maxLength={20_000} placeholder="Start anywhere…" value={body} onChange={event => setBody(event.target.value)} autoFocus {...stylex.props(styles.bodyInput)}/>

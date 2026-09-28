@@ -4,6 +4,7 @@ import type { LocalImage, LocalNote } from '../local-store';
 import { imageSource } from '../local-store';
 import { styles } from '../app.stylex';
 import { Icon } from './Icon';
+import { ImageMosaic } from './ImageMosaic';
 
 export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
   notes: LocalNote[]; heading?: string; label: string;
@@ -157,8 +158,8 @@ function NoteCard({ note, onCardClick, onPin, dropTarget, onPointerDown, onKeyDo
   const image = note.images[0];
   return <li data-item-id={note.id} {...stylex.props(styles.noteItem, dropTarget && styles.dropTarget)}>
     <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} title="Drag to reorder · arrow keys to move" onClick={onCardClick} onPointerDown={onPointerDown} onContextMenu={event => event.preventDefault()} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>
-      {image && <LocalPhoto image={image}/>} 
-      {note.images.length > 1 && <span {...stylex.props(styles.imageNumber)}><Icon name="image" width={14}/>{note.images.length}</span>}
+      {note.images.length === 1 && <LocalPhoto image={image}/>}
+      {note.images.length > 1 && <ImageMosaic images={note.images.map(item => <LocalPhoto key={item.id} image={item} className={stylex.props(styles.mosaicPhoto).className}/>)}/>}
       <span {...stylex.props(styles.noteContent, image && styles.imageContent)}>
         {note.title && <span {...stylex.props(styles.noteTitle)}>{note.title}</span>}
         {note.body && <span {...stylex.props(styles.noteBody)}>{note.body}</span>}
