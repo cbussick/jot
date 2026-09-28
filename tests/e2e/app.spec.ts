@@ -41,8 +41,42 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Open note: Image note' })).not.toBeVisible();
 });
 
+test('pins from the board and keeps pinned controls visible', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
+  await page.keyboard.press('n');
+  await page.getByRole('textbox', { name: 'Title' }).fill('Board pin test');
+  await page.getByRole('button', { name: 'Close note' }).click();
+
+  const card = page.getByRole('button', { name: 'Open note: Board pin test' });
+  const pin = page.getByRole('button', { name: 'Pin note: Board pin test' });
+  await page.mouse.move(0, 0);
+  await expect(pin).toHaveCSS('opacity', '0');
+  await card.hover();
+  await expect(pin).toHaveCSS('opacity', '1');
+  const cardBox = await card.boundingBox();
+  const pinBox = await pin.boundingBox();
+  expect(pinBox!.x).toBeGreaterThan(cardBox!.x + cardBox!.width / 2);
+  expect(pinBox!.y).toBeLessThan(cardBox!.y + cardBox!.height / 2);
+
+  await pin.click();
+  const unpin = page.getByRole('button', { name: 'Unpin note: Board pin test' });
+  await page.mouse.move(0, 0);
+  await expect(unpin).toHaveCSS('opacity', '1');
+  await expect(page.getByRole('heading', { name: 'Pinned', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await page.reload();
+  await expect(unpin).toHaveCSS('opacity', '1');
+  await unpin.click();
+  await page.getByRole('heading', { name: 'Your notes' }).click();
+  await page.mouse.move(0, 0);
+  await expect(pin).toHaveCSS('opacity', '0');
+  await expect(page.getByRole('dialog', { name: 'A little note' })).not.toBeVisible();
+});
+
 test('saves a new text note when closed', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
   await page.keyboard.press('n');
   await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Saved by closing');
   await page.getByRole('button', { name: 'Close note' }).click();
