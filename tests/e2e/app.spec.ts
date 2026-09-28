@@ -44,6 +44,16 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Open note: Image note' })).not.toBeVisible();
 });
 
+test('focuses the body when creating a note', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New note' }).click();
+  const editor = page.getByRole('dialog', { name: 'Add note' });
+  const body = editor.getByRole('textbox', { name: 'Note', exact: true });
+  await expect(body).toBeFocused();
+  await page.keyboard.type('Start here');
+  await expect(body).toHaveValue('Start here');
+});
+
 test('note colors stay in a palette popover that can be dismissed', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New note' }).click();
