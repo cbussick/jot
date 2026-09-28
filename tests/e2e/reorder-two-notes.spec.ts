@@ -6,7 +6,7 @@ test('two notes can be dragged to swap and dragged back', async ({ page }) => {
   const second = `Second ${suffix}`;
   await page.goto('/');
   for (const title of [first, second]) {
-    await page.getByRole('button', { name: 'Add a note' }).click();
+    await page.getByRole('button', { name: 'New note' }).click();
     await page.getByRole('textbox', { name: 'Title' }).fill(title);
     await page.getByRole('button', { name: 'Close note' }).click();
     await expect(page.getByRole('button', { name: `Open note: ${title}` })).toBeVisible();

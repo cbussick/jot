@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('rapid image edits do not generate a conflict copy', async ({ page }) => {
   const title = `Race ${crypto.randomUUID()}`;
   await page.goto('/');
-  await page.getByRole('button', { name: 'Add a note' }).click();
+  await page.getByRole('button', { name: 'New note' }).click();
   await page.getByRole('textbox', { name: 'Title' }).fill(title);
   await page.getByRole('button', { name: 'Attach an image' }).click();
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');

@@ -6,7 +6,7 @@ test('release after a reordered card loses capture clears the floating preview',
   await page.setViewportSize({ width: 1100, height: 800 });
   await page.goto('/');
   for (const title of [first, second, third]) {
-    await page.getByRole('button', { name: 'Add a note' }).click();
+    await page.getByRole('button', { name: 'New note' }).click();
     await page.getByRole('textbox', { name: 'Title' }).fill(title);
     await page.getByRole('button', { name: 'Close note' }).click();
     await expect(page.getByRole('button', { name: `Open note: ${title}` })).toBeVisible();
