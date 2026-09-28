@@ -108,6 +108,39 @@ test('pins from the board and keeps pinned controls visible', async ({ page }) =
   await expect(page.getByRole('dialog', { name: 'Edit note' })).not.toBeVisible();
 });
 
+test('right-click note actions open, pin, and confirm deletion', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Add a note' }).click();
+  await page.getByRole('textbox', { name: 'Title' }).fill('Context actions test');
+  await page.getByRole('button', { name: 'Close note' }).click();
+  const card = page.getByRole('button', { name: 'Open note: Context actions test' });
+  const menu = page.getByRole('menu', { name: 'Note actions' });
+  await card.click({ button: 'right' });
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('menuitem')).toHaveText(['Delete', 'Pin', 'Open']);
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toBeVisible();
+  await expect(card).toBeFocused();
+  await card.click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: 'Open' }).click();
+  await expect(page.getByRole('dialog', { name: 'Edit note' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await card.click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: 'Pin' }).click();
+  await expect(page.getByRole('list', { name: 'Pinned notes' }).getByRole('button', { name: 'Open note: Context actions test' })).toBeVisible();
+  await card.click({ button: 'right' });
+  await expect(menu.getByRole('menuitem', { name: 'Unpin' })).toBeVisible();
+  await menu.getByRole('menuitem', { name: 'Delete' }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Delete this note?' });
+  await expect(confirmation).toBeVisible();
+  await confirmation.getByRole('button', { name: 'Keep note' }).click();
+  await expect(card).toBeVisible();
+  await card.click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: 'Delete' }).click();
+  await confirmation.getByRole('button', { name: 'Delete note' }).click();
+  await expect(card).not.toBeVisible();
+});
+
 test('drags notes into a persistent order and supports keyboard reordering', async ({ page }) => {
   await page.goto('/');
   for (const title of ['Order one', 'Order two', 'Order three']) {
