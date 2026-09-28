@@ -89,7 +89,7 @@ test('keeps the header in view and switches to a floating create action when cap
   await expect(floating).toBeVisible();
   expect(await header.evaluate(element => element.getBoundingClientRect().top)).toBe(0);
   await floating.getByRole('button', { name: 'New note' }).click();
-  await expect(page.getByRole('dialog', { name: 'Something worth keeping' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Add note' })).toBeVisible();
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(floating).toBeHidden();
