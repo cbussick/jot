@@ -54,6 +54,8 @@ test('pins from the board and keeps pinned controls visible', async ({ page }) =
   await expect(pin).toHaveCSS('opacity', '0');
   await card.hover();
   await expect(pin).toHaveCSS('opacity', '1');
+  await pin.hover();
+  await expect(pin).toHaveCSS('background-color', 'rgb(230, 235, 232)');
   const cardBox = await card.boundingBox();
   const pinBox = await pin.boundingBox();
   expect(pinBox!.x).toBeGreaterThan(cardBox!.x + cardBox!.width / 2);

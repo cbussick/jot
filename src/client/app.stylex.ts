@@ -51,7 +51,7 @@ export const styles = stylex.create({
   noteDate: { display: 'block', paddingRight: 32, marginTop: 22, fontSize: 12, color: '#596459', lineHeight: 1.4 },
   photo: { display: 'block', width: '100%', height: 'auto', maxHeight: 420, objectFit: 'contain' },
   imageNumber: { position: 'absolute', left: 12, top: 12, display: 'flex', alignItems: 'center', gap: 5, backgroundColor: '#fffffff0', padding: '5px 8px', borderRadius: 6, fontSize: 11 },
-  pin: { position: 'absolute', right: 6, top: 4, width: 44, height: 44, display: 'grid', placeItems: 'center', borderRadius: 8, color: colors.muted, backgroundColor: '#ffffffc9', ':hover': { backgroundColor: '#fff' } },
+  pin: { position: 'absolute', right: 6, top: 4, width: 44, height: 44, display: 'grid', placeItems: 'center', borderRadius: 8, color: colors.muted, backgroundColor: '#ffffffc9', ':hover': { backgroundColor: '#e6ebe8' } },
   pinHiddenDesktop: { '@media (hover: hover) and (pointer: fine)': { opacity: 'var(--pin-opacity)' }, ':focus-visible': { opacity: 1 } },
   pinned: { color: colors.green },
   empty: { textAlign: 'center', padding: '80px 20px', color: colors.muted },
