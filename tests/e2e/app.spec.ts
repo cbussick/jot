@@ -87,8 +87,16 @@ test('drags notes into a persistent order and supports keyboard reordering', asy
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   const board = page.getByRole('list', { name: 'Notes' });
   const titles = async () => (await board.getByRole('button', { name: /^Open note:/ }).allTextContents()).filter(text => text.includes('Order '));
-  const first = page.getByRole('button', { name: 'Move note: Order one. Drag or use arrow keys' });
-  await first.dragTo(page.getByRole('button', { name: 'Open note: Order three' }));
+  const first = page.getByRole('button', { name: 'Open note: Order one' });
+  const from = await first.boundingBox();
+  const to = await page.getByRole('button', { name: 'Open note: Order three' }).boundingBox();
+  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to!.x + to!.width / 2, to!.y + to!.height / 2, { steps: 8 });
+  await expect(page.locator('body > button[aria-hidden="true"]')).toBeVisible();
+  await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
+  await page.mouse.up();
+  await expect(page.getByRole('dialog', { name: 'A little note' })).not.toBeVisible();
   await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.reload();
@@ -96,6 +104,49 @@ test('drags notes into a persistent order and supports keyboard reordering', asy
   await first.focus();
   await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['three', 'one', 'two']);
+});
+
+test.describe('touch reordering', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+  test('holds a note to drag it without opening the editor or a context menu', async ({ page }) => {
+    await page.goto('/');
+    for (const title of ['Touch one', 'Touch two']) {
+      await page.getByRole('button', { name: 'New note' }).click();
+      await page.getByRole('textbox', { name: 'Title' }).fill(title);
+      await page.getByRole('button', { name: 'Close note' }).click();
+    }
+    const first = page.getByRole('button', { name: 'Open note: Touch one' });
+    const second = page.getByRole('button', { name: 'Open note: Touch two' });
+    const from = await first.boundingBox();
+    const to = await second.boundingBox();
+    const x = from!.x + from!.width / 2;
+    const y = from!.y + from!.height / 2;
+    const destination = { x: to!.x + to!.width / 2, y: to!.y + to!.height / 2 };
+    const client = await page.context().newCDPSession(page);
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    await page.waitForTimeout(500);
+    for (let step = 1; step <= 5; step++) {
+      await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (destination.x - x) * step / 5, y: y + (destination.y - y) * step / 5 }] });
+    }
+    const board = page.getByRole('list', { name: 'Notes' });
+    const order = async () => (await board.locator('[data-item-id]').allTextContents()).filter(text => text.includes('Touch ')).map(text => text.includes('Touch one') ? 'one' : 'two');
+    await expect.poll(order).toEqual(['one', 'two']); // Preview before releasing.
+    const floating = page.locator('body > button[aria-hidden="true"]');
+    await expect(floating).toBeVisible();
+    expect(Math.abs((await floating.boundingBox())!.x - from!.x)).toBeGreaterThan(10);
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(order).toEqual(['one', 'two']);
+    await expect(floating).toHaveCount(0);
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    const held = await first.boundingBox();
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: held!.x + held!.width / 2, y: held!.y + held!.height / 2 }] });
+    await page.waitForTimeout(500);
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await first.tap();
+    await expect(page.getByRole('dialog', { name: 'A little note' })).toBeVisible();
+  });
 });
 
 test('saves a new text note when closed', async ({ page }) => {
