@@ -196,7 +196,7 @@ test('keeps the mobile create action visible while the header sticks', async ({ 
   expect(await page.locator('#root > header').evaluate(element => element.getBoundingClientRect().top)).toBe(0);
 });
 
-test('pins from the board and keeps pinned controls visible', async ({ page }) => {
+test('pins from the board and shows pin controls on hover for both groups', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
   await page.keyboard.press('n');
@@ -220,11 +220,16 @@ test('pins from the board and keeps pinned controls visible', async ({ page }) =
   await pin.click();
   const unpin = page.getByRole('button', { name: 'Unpin note: Board pin test' });
   await expect(unpin.locator('svg path').first()).toHaveAttribute('fill', 'currentColor');
+  await page.getByRole('heading', { name: 'Pinned', exact: true }).click();
   await page.mouse.move(0, 0);
+  await expect(unpin).toHaveCSS('opacity', '0');
+  await card.hover();
   await expect(unpin).toHaveCSS('opacity', '1');
-  await expect(page.getByRole('heading', { name: 'Pinned', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.reload();
+  await page.mouse.move(0, 0);
+  await expect(unpin).toHaveCSS('opacity', '0');
+  await card.hover();
   await expect(unpin).toHaveCSS('opacity', '1');
   await unpin.click();
   await page.getByRole('heading', { name: 'Your notes' }).click();
@@ -321,9 +326,10 @@ test.describe('touch reordering', () => {
     await expect(page.getByRole('menu', { name: 'Note actions' })).toHaveCount(0);
     const from = await first.boundingBox();
     const to = await second.boundingBox();
-    const x = from!.x + from!.width / 2;
-    const y = from!.y + from!.height / 2;
-    const destination = { x: to!.x + to!.width / 2, y: to!.y + to!.height / 2 };
+    // Start below the pin control: on narrow cards it covers the card's center.
+    const x = from!.x + 20;
+    const y = from!.y + from!.height - 20;
+    const destination = { x: to!.x + 20, y: to!.y + to!.height - 20 };
     const client = await page.context().newCDPSession(page);
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
     await page.waitForTimeout(500);
@@ -342,11 +348,11 @@ test.describe('touch reordering', () => {
     await expect(floating).toHaveCount(0);
     await expect(page.getByRole('dialog')).not.toBeVisible();
     const held = await first.boundingBox();
-    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: held!.x + held!.width / 2, y: held!.y + held!.height / 2 }] });
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: held!.x + 20, y: held!.y + held!.height - 20 }] });
     await page.waitForTimeout(500);
     await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.getByRole('dialog')).not.toBeVisible();
-    await first.tap();
+    await first.tap({ position: { x: 20, y: held!.height - 20 } });
     await expect(page.getByRole('dialog', { name: 'Edit note' })).toBeVisible();
   });
 
@@ -828,7 +834,7 @@ for (const width of [390, 1280]) {
   test(`clamps long note previews but keeps the editor text intact at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/');
-    await page.getByRole('button', { name: width === 390 ? 'New note' : 'Add a note' }).click();
+    await page.getByRole('button', { name: 'New note' }).click();
     const title = `${'A very long title that should be shortened in the overview '.repeat(2).trim()} ${width}`;
     const body = 'A longer body that should be shortened in the overview. '.repeat(20).trim();
     await page.getByRole('textbox', { name: 'Title' }).fill(title);
