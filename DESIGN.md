@@ -1,8 +1,8 @@
-# jot. — product and design decisions
+# Shelf — product and design decisions
 
 ## Product boundary
 
-jot. is a single-owner, self-hosted home for text and image notes. It intentionally excludes checklists, drawings, labels, archive, reminders, sharing, and a persistent trash folder.
+Shelf is a single-owner, self-hosted home for text and image notes. It intentionally excludes checklists, drawings, labels, archive, reminders, sharing, and a persistent trash folder.
 
 ## Visual direction
 
@@ -24,7 +24,7 @@ jot. is a single-owner, self-hosted home for text and image notes. It intentiona
 
 The browser commits edits to IndexedDB before attempting the network. A durable outbox coalesces pending changes by note. The Express server is authoritative after synchronization and stores notes in SQLite.
 
-Each note has a monotonically increasing version. Mutations include the version the editor started from. If another device has changed the note, jot. retains the server version and creates a separate local conflict copy rather than silently overwriting content.
+Each note has a monotonically increasing version. Mutations include the version the editor started from. If another device has changed the note, Shelf retains the server version and creates a separate local conflict copy rather than silently overwriting content.
 
 The interface reports local, syncing, synced, offline, and failure states separately. It never claims an edit is synced before receiving server confirmation.
 

@@ -22,7 +22,7 @@ async function unusedPort(): Promise<number> {
 // A fresh browser context is already provided by Playwright for each test.
 export const test = base.extend<{ isolatedServer: { url: string; storageState: StorageState } }>({
   isolatedServer: async ({}, use) => {
-    const dataDir = await mkdtemp(join(tmpdir(), 'jot-e2e-'));
+    const dataDir = await mkdtemp(join(tmpdir(), 'shelf-e2e-'));
     const port = await unusedPort();
     const url = `http://127.0.0.1:${port}`;
     const server = spawn(process.execPath, ['dist/server/server/index.js'], {

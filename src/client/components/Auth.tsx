@@ -23,14 +23,14 @@ export function Auth({ setupRequired, onAuthenticated }: { setupRequired: boolea
   };
   return <main {...stylex.props(styles.loginPage)}><form onSubmit={submit} {...stylex.props(styles.loginCard)}>
     <Brand/>
-    <h1 {...stylex.props(styles.loginTitle)}>{setupRequired ? 'Make jot. yours' : 'Welcome back'}</h1>
+    <h1 {...stylex.props(styles.loginTitle)}>{setupRequired ? 'Make Shelf yours' : 'Welcome back'}</h1>
     <p {...stylex.props(styles.loginCopy)}>{setupRequired ? 'Choose the password for this private instance. Use at least 12 characters.' : 'Enter your password to open your notes.'}</p>
     <label className="sr-only" htmlFor="password">Password</label><input id="password" type="password" autoComplete={setupRequired ? 'new-password' : 'current-password'} required value={password} onChange={event => setPassword(event.target.value)} {...stylex.props(styles.password)}/>
     <p role="alert" {...stylex.props(styles.error)}>{error}</p>
-    <button type="submit" disabled={busy} {...stylex.props(styles.primary, styles.fullButton)}>{busy ? 'Please wait…' : setupRequired ? 'Create private instance' : 'Open jot.'}</button>
+    <button type="submit" disabled={busy} {...stylex.props(styles.primary, styles.fullButton)}>{busy ? 'Please wait…' : setupRequired ? 'Create private instance' : 'Open Shelf'}</button>
   </form></main>;
 }
 
 export function Brand() {
-  return <span {...stylex.props(styles.brand)}><span aria-hidden="true" {...stylex.props(styles.brandMark)}><i {...stylex.props(styles.brandLine)}/><i {...stylex.props(styles.brandLine, styles.brandLineTwo)}/><i {...stylex.props(styles.brandFold)}/></span><span>jot<span {...stylex.props(styles.brandDot)}>.</span></span></span>;
+  return <span {...stylex.props(styles.brand)}><span aria-hidden="true" {...stylex.props(styles.brandMark)}><i {...stylex.props(styles.brandLine)}/><i {...stylex.props(styles.brandLine, styles.brandLineTwo)}/><i {...stylex.props(styles.brandFold)}/></span><span>Shelf</span></span>;
 }

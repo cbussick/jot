@@ -4,6 +4,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await page.goto('/');
+  await expect(page).toHaveTitle('Shelf — Your notes');
+  await expect(page.getByRole('link', { name: 'Shelf home' })).toContainText('Shelf');
   await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
   await page.keyboard.press('n');
   await page.getByRole('textbox', { name: 'Title' }).fill('Keep this close');
@@ -957,10 +959,10 @@ test('requires the owner password in a new browser profile', async ({ browser, b
   await page.goto(baseURL!);
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   await page.getByLabel('Password').fill('incorrect password value');
-  await page.getByRole('button', { name: 'Open jot.' }).click();
+  await page.getByRole('button', { name: 'Open Shelf' }).click();
   await expect(page.getByRole('alert')).toContainText('Incorrect password');
   await page.getByLabel('Password').fill('correct horse battery staple');
-  await page.getByRole('button', { name: 'Open jot.' }).click();
+  await page.getByRole('button', { name: 'Open Shelf' }).click();
   await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
   await context.close();
 });

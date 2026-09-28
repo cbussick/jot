@@ -1,4 +1,4 @@
-# jot.
+# Shelf
 
 A small, private, self-hosted notes app for text and images. It is designed for one owner and works across desktop, tablet, and phone.
 
@@ -18,7 +18,7 @@ A small, private, self-hosted notes app for text and images. It is designed for 
 - Up to six JPG, PNG, WebP, or GIF images per note
 - Local-first saving with an honest sync status
 - Offline startup after the first successful visit
-- Offline note creation and editing; queued changes sync while jot. is open and connected
+- Offline note creation and editing; queued changes sync while Shelf is open and connected
 - Conflict protection that preserves the local edit as a conflict copy
 - Installable PWA on supported browsers and operating systems
 - Android share-sheet target for screenshots and other JPG, PNG, WebP, or GIF images
@@ -54,7 +54,7 @@ Build and start the application:
 docker compose up -d --build
 ```
 
-Compose publishes jot. only on the VPS loopback interface at `127.0.0.1:3000`. It is not exposed on the VPS's public interfaces.
+Compose publishes Shelf only on the VPS loopback interface at `127.0.0.1:3000`. It is not exposed on the VPS's public interfaces.
 
 Expose it privately to your Tailnet with HTTPS:
 
@@ -68,7 +68,7 @@ The first visit creates the only owner account. There are no default credentials
 
 ## Persistent data and backups
 
-The `jot-data` Docker volume contains:
+The existing `jot-data` Docker volume contains:
 
 ```text
 /data/jot.sqlite
@@ -77,12 +77,12 @@ The `jot-data` Docker volume contains:
 /data/images/
 ```
 
-Back up the database and image directory together. The safest simple procedure is:
+The volume, database filename, browser storage, cookie, and Compose service retain their original internal identifiers so upgrading an existing installation does not lose notes, offline changes, or sessions. Back up the database and image directory together. The safest simple procedure is:
 
 ```bash
 docker compose stop jot
 docker run --rm -v jot-data:/data -v "$PWD/backups:/backup" \
-  alpine tar czf "/backup/jot-$(date +%F-%H%M%S).tar.gz" -C /data .
+  alpine tar czf "/backup/shelf-$(date +%F-%H%M%S).tar.gz" -C /data .
 docker compose start jot
 ```
 
@@ -99,9 +99,9 @@ The PWA downloads frontend updates in the background and offers a **Refresh app*
 
 ## Share screenshots from Android
 
-On an Android phone or tablet, install jot. from Chrome while connected to its HTTPS URL. In your screenshots or photos app, tap **Share → jot.** The image opens in a new note: add text or more images, then close the note to save it. Closing an empty draft without images does not create a note. Shares received offline can be saved on the device and will sync when jot. is open and connected again. If jot. was installed before this feature was deployed, you may need to reinstall it for Android to register the new share target.
+On an Android phone or tablet, install Shelf from Chrome while connected to its HTTPS URL. In your screenshots or photos app, tap **Share → Shelf.** The image opens in a new note: add text or more images, then close the note to save it. Closing an empty draft without images does not create a note. Shares received offline can be saved on the device and will sync when Shelf is open and connected again. If the app was installed before this feature was deployed, you may need to reinstall it for Android to register the new share target.
 
-This requires a browser that supports Web Share Target (such as Chrome on Android). iOS/iPadOS PWAs cannot currently appear in the system share sheet; use **Add an image** in jot. instead.
+This requires a browser that supports Web Share Target (such as Chrome on Android). iOS/iPadOS PWAs cannot currently appear in the system share sheet; use **Add an image** in Shelf instead.
 
 ## Sync behavior
 
@@ -109,7 +109,7 @@ Drag a note by its top-left handle to reorder it within Pinned or Other notes. T
 
 Edits are committed to IndexedDB first and sent to the server immediately when possible. The header distinguishes **Saved on device**, **Syncing…**, **Synced**, and failure/offline states.
 
-Mobile operating systems can suspend web apps after they are backgrounded. An edit made offline may therefore remain only on its original device until jot. is opened again with connectivity. Incoming shares are temporary on-device drafts (not notes) until saved, and expire after 24 hours.
+Mobile operating systems can suspend web apps after they are backgrounded. An edit made offline may therefore remain only on its original device until Shelf is opened again with connectivity. Incoming shares are temporary on-device drafts (not notes) until saved, and expire after 24 hours.
 
 ## Security notes
 

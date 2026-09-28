@@ -15,7 +15,7 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['assets/favicon.svg', 'assets/*.ttf', 'icons/apple-touch-icon.png'],
       manifest: {
-        name: 'jot.', short_name: 'jot.', description: 'A private place for little notes.',
+        name: 'Shelf', short_name: 'Shelf', description: 'A private place for little notes.',
         start_url: '/', scope: '/', display: 'standalone',
         share_target: {
           action: '/share-target', method: 'POST', enctype: 'multipart/form-data',
