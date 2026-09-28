@@ -476,6 +476,24 @@ test('accepts an image and keeps the editor textarea fixed', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
 });
 
+test('image-only cards have no empty content section', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Add an image' }).click();
+  await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
+  await page.getByRole('button', { name: 'Close note' }).click();
+
+  const card = page.getByRole('button', { name: 'Open note: image.jpg' });
+  await expect(card.getByRole('img')).toBeVisible();
+  await expect(card.locator('span')).toHaveCount(0);
+  const dimensions = await card.evaluate(element => ({ card: element.getBoundingClientRect().height, image: element.querySelector('img')!.getBoundingClientRect().height }));
+  expect(dimensions.card - dimensions.image).toBeLessThanOrEqual(2);
+
+  await card.click();
+  await page.getByRole('textbox', { name: 'Note', exact: true }).fill('A caption');
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await expect(page.getByRole('button', { name: 'Open note: A caption' }).getByText('A caption')).toBeVisible();
+});
+
 test('pastes clipboard images into new and existing notes without disrupting text paste', async ({ page, context }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New note' }).click();
