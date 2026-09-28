@@ -54,7 +54,7 @@ test('shows created and updated times only inside an existing note', async ({ pa
   const card = page.getByRole('button', { name: 'Open note: Timestamp placement' });
   await expect(card).toBeVisible();
   await expect(card.locator('time')).toHaveCount(0);
-  await card.click();
+  await card.click({ position: { x: 16, y: 20 } });
   const editor = page.getByRole('dialog', { name: 'Edit note' });
   const timestamps = editor.locator('header time');
   await expect(timestamps).toHaveCount(2);
@@ -754,3 +754,33 @@ test('requires the owner password in a new browser profile', async ({ browser, b
   await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
   await context.close();
 });
+
+for (const width of [390, 1280]) {
+  test(`clamps long note previews but keeps the editor text intact at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/');
+    await page.getByRole('button', { name: width === 390 ? 'New note' : 'Add a note' }).click();
+    const title = `${'A very long title that should be shortened in the overview '.repeat(2).trim()} ${width}`;
+    const body = 'A longer body that should be shortened in the overview. '.repeat(20).trim();
+    await page.getByRole('textbox', { name: 'Title' }).fill(title);
+    await page.getByRole('textbox', { name: 'Note', exact: true }).fill(body);
+    await page.getByRole('button', { name: 'Close note' }).click();
+
+    const card = page.getByRole('button', { name: `Open note: ${title}`, exact: true });
+    await expect(card).toBeVisible();
+    for (const [index, lines, text] of [[1, 2, title], [2, 4, body]] as const) {
+      const preview = card.locator('span').nth(index);
+      // The full text remains available; only its rendered preview is truncated.
+      expect(await preview.textContent()).toBe(text);
+      const dimensions = await preview.evaluate(element => {
+        const style = getComputedStyle(element);
+        return { height: element.getBoundingClientRect().height, lineHeight: parseFloat(style.lineHeight), clamp: style.webkitLineClamp };
+      });
+      expect(dimensions.clamp).toBe(String(lines));
+      expect(dimensions.height).toBeLessThanOrEqual(lines * dimensions.lineHeight + 1);
+    }
+    await card.click();
+    await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue(title);
+    await expect(page.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue(body);
+  });
+}
