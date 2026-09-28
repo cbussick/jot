@@ -29,6 +29,11 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
   const [newImages, setNewImages] = useState<File[]>(initialImages);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [preview, setPreview] = useState<{ image: LocalImage } | { src: string; alt: string } | null>(null);
+  const openNewPreview = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const image = event.currentTarget.querySelector('img');
+    if (image) setPreview({ src: image.src, alt: image.alt });
+  };
   const initial = useRef(snapshot({ title, body, color, pinned, retainedImages, newImages }));
   const dirty = initial.current !== snapshot({ title, body, color, pinned, retainedImages, newImages });
 
@@ -70,8 +75,8 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
           <button type="button" aria-label="Close note" onClick={requestClose} {...stylex.props(styles.iconButton)}><Icon name="x"/></button>
         </div></header>
         {(retainedImages.length > 0 || newImages.length > 0) && <div {...stylex.props(styles.editorImages)}>
-          {retainedImages.map((image, index) => <div key={image.id} {...stylex.props(styles.editorImage)}><LocalPhoto image={image} className={stylex.props(styles.editorPhoto).className}/><button type="button" aria-label={`Remove image ${index + 1}`} onClick={() => setRetainedImages(images => images.filter(item => item.id !== image.id))} {...stylex.props(styles.imageRemove)}><Icon name="x"/></button></div>)}
-          {newImages.map((file, index) => <NewPhoto key={`${file.name}-${file.lastModified}-${index}`} file={file} index={retainedImages.length + index} onRemove={() => setNewImages(files => files.filter((_, position) => position !== index))}/>) }
+          {retainedImages.map((image, index) => <div key={image.id} {...stylex.props(styles.editorImage)}><button type="button" aria-label={`View image ${index + 1}`} onClick={() => setPreview({ image })} {...stylex.props(styles.photoButton)}><LocalPhoto image={image} className={stylex.props(styles.editorPhoto).className}/></button><button type="button" aria-label={`Remove image ${index + 1}`} onClick={() => setRetainedImages(images => images.filter(item => item.id !== image.id))} {...stylex.props(styles.imageRemove)}><Icon name="x"/></button></div>)}
+          {newImages.map((file, index) => <NewPhoto key={`${file.name}-${file.lastModified}-${index}`} file={file} index={retainedImages.length + index} onOpen={openNewPreview} onRemove={() => setNewImages(files => files.filter((_, position) => position !== index))}/>) }
         </div>}
         <div {...stylex.props(styles.editorFields)}>
           <label className="sr-only" htmlFor="note-title">Title</label><input id="note-title" maxLength={160} placeholder="Title" value={title} onChange={event => setTitle(event.target.value)} {...stylex.props(styles.titleInput)}/>
@@ -85,15 +90,28 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
         </div><div {...stylex.props(styles.actions)}>{note && <button type="button" aria-label="Delete note" onClick={() => deleteDialog.current?.showModal()} {...stylex.props(styles.iconButton, styles.deleteIcon)}><Icon name="trash"/></button>}<button type="submit" disabled={saving} {...stylex.props(styles.primary)}>{saving ? 'Saving…' : 'Save note'}</button></div></footer>
       </form>
     </dialog>
+    {preview && <ImagePreview preview={preview} onClose={() => setPreview(null)}/>}
     <ConfirmDialog ref={discardDialog} title="Leave without saving?" copy="Your changes to this note will be lost." cancel="Keep editing" confirm="Discard changes" onConfirm={onClose}/>
     <ConfirmDialog ref={deleteDialog} title="Delete this note?" copy="This is permanent. There’s no trash to come back to." cancel="Keep note" confirm="Delete note" onConfirm={() => note && onDelete(note)}/>
   </>;
 }
 
-function NewPhoto({ file, index, onRemove }: { file: File; index: number; onRemove: () => void }) {
+function NewPhoto({ file, index, onOpen, onRemove }: { file: File; index: number; onOpen: (event: React.MouseEvent<HTMLButtonElement>) => void; onRemove: () => void }) {
   const url = useMemo(() => URL.createObjectURL(file), [file]);
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
-  return <div {...stylex.props(styles.editorImage)}><img src={url} alt={file.name} {...stylex.props(styles.editorPhoto)}/><button type="button" aria-label={`Remove image ${index + 1}`} onClick={onRemove} {...stylex.props(styles.imageRemove)}><Icon name="x"/></button></div>;
+  return <div {...stylex.props(styles.editorImage)}><button type="button" aria-label={`View image ${index + 1}`} onClick={onOpen} {...stylex.props(styles.photoButton)}><img src={url} alt={file.name} {...stylex.props(styles.editorPhoto)}/></button><button type="button" aria-label={`Remove image ${index + 1}`} onClick={onRemove} {...stylex.props(styles.imageRemove)}><Icon name="x"/></button></div>;
+}
+
+function ImagePreview({ preview, onClose }: { preview: { image: LocalImage } | { src: string; alt: string }; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    dialog.current?.showModal();
+    return () => dialog.current?.close();
+  }, []);
+  return <dialog ref={dialog} aria-label="Image preview" onClose={onClose} onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }} {...stylex.props(styles.previewDialog)}>
+    {'image' in preview ? <LocalPhoto image={preview.image} className={stylex.props(styles.previewPhoto).className}/> : <img src={preview.src} alt={preview.alt} {...stylex.props(styles.previewPhoto)}/>}
+    <button type="button" aria-label="Close image preview" onClick={() => dialog.current?.close()} {...stylex.props(styles.previewClose)}><Icon name="x"/></button>
+  </dialog>;
 }
 
 function ConfirmDialog({ ref, title, copy, cancel, confirm, onConfirm }: {

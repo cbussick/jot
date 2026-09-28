@@ -47,6 +47,34 @@ test('accepts an image and keeps the editor textarea fixed', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
 });
 
+for (const width of [390, 1440]) {
+  test(`opens draft and saved images in a lightbox at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
+    await page.keyboard.press('n');
+    await page.getByRole('textbox', { name: 'Title' }).fill(`Photo preview ${width}`);
+    await page.getByRole('button', { name: 'Attach an image' }).click();
+    await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
+    const preview = page.getByRole('dialog', { name: 'Image preview' });
+    await page.getByRole('button', { name: 'View image 1' }).click();
+    await expect(preview.getByRole('img')).toBeVisible();
+    const bounds = await preview.boundingBox();
+    if (width === 390) expect(bounds?.width).toBe(width);
+    else expect(bounds?.width).toBeGreaterThan(800);
+    await page.keyboard.press('Escape');
+    await expect(preview).not.toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue(`Photo preview ${width}`);
+    await page.getByRole('button', { name: 'Save note' }).click();
+    await page.getByRole('button', { name: `Open note: Photo preview ${width}` }).click();
+    await page.getByRole('button', { name: 'View image 1' }).click();
+    await expect(preview.getByRole('img')).toBeVisible();
+    await preview.getByRole('button', { name: 'Close image preview' }).click();
+    await expect(preview).not.toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'A little note' })).toBeVisible();
+  });
+}
+
 test('receives an Android share as an unsaved draft, supports editing, and discards on cancel', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => navigator.serviceWorker.ready);

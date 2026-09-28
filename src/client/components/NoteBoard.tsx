@@ -39,8 +39,13 @@ export function LocalPhoto({ image, className }: { image: LocalImage; className?
   const [source, setSource] = useState(image.url);
   useEffect(() => {
     let objectUrl = '';
-    void imageSource(image).then(url => { objectUrl = image.blobId ? url : ''; setSource(url); });
-    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    let active = true;
+    void imageSource(image).then(url => {
+      if (image.blobId) objectUrl = url;
+      if (active) setSource(url);
+      else if (objectUrl) URL.revokeObjectURL(objectUrl);
+    });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [image]);
   return <img src={source} alt={image.alt} width={image.width} height={image.height} className={className} {...(!className ? stylex.props(styles.photo) : {})}/>;
 }
