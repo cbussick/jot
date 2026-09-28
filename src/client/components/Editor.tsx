@@ -62,7 +62,6 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     if (saving) return;
     const cleanTitle = title.trim();
     const cleanBody = body.trim();
-    if (!note && !cleanTitle && !cleanBody && retainedImages.length + newImages.length === 0) return setError('Add some text or an image first.');
     setSaving(true); setError('');
     try {
       await onSave({ id: note?.id, title: cleanTitle, body: cleanBody, color, pinned, retainedImages, newImages, version: note?.version, createdAt: note?.createdAt });
@@ -72,13 +71,12 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
       setSaving(false);
     }
   };
-  const submit = (event: React.FormEvent) => { event.preventDefault(); void save(); };
   return <>
     <dialog ref={dialog} aria-labelledby="editor-heading" onCancel={event => { if (event.target !== event.currentTarget) return; event.preventDefault(); requestClose(); }} {...stylex.props(styles.dialog, styles.editor, styles[color])}>
-      <form onSubmit={submit} {...stylex.props(styles.editorForm)}>
+      <div {...stylex.props(styles.editorForm)}>
         <header {...stylex.props(styles.editorHeader)}><span id="editor-heading">{note ? 'A little note' : 'Something worth keeping'}</span><div {...stylex.props(styles.headerActions)}>
           <button type="button" aria-label={pinned ? 'Unpin note' : 'Pin note'} aria-pressed={pinned} onClick={() => setPinned(value => !value)} {...stylex.props(styles.pinText, pinned && styles.pinned)}><Icon name="pin" width={18}/><span>{pinned ? 'Pinned' : 'Pin'}</span></button>
-          <button type="button" aria-label="Close note" onClick={requestClose} {...stylex.props(styles.iconButton)}><Icon name="x"/></button>
+          <button type="button" aria-label="Close note" disabled={saving} onClick={requestClose} {...stylex.props(styles.iconButton)}><Icon name="x"/></button>
         </div></header>
         {(retainedImages.length > 0 || newImages.length > 0) && <div {...stylex.props(styles.editorImages)}>
           {retainedImages.map((image, index) => <div key={image.id} {...stylex.props(styles.editorImage)}><button type="button" aria-label={`View image ${index + 1}`} onClick={() => setPreview({ image })} {...stylex.props(styles.photoButton)}><LocalPhoto image={image} className={stylex.props(styles.editorPhoto).className}/></button><button type="button" aria-label={`Remove image ${index + 1}`} onClick={() => setRetainedImages(images => images.filter(item => item.id !== image.id))} {...stylex.props(styles.imageRemove)}><Icon name="x"/></button></div>)}
@@ -89,12 +87,13 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
           <label className="sr-only" htmlFor="note-body">Note</label><textarea id="note-body" maxLength={20_000} placeholder="Start anywhere…" value={body} onChange={event => setBody(event.target.value)} autoFocus {...stylex.props(styles.bodyInput)}/>
         </div>
         <p role="alert" {...stylex.props(styles.error)}>{error}</p>
+        {saving && <span role="status" className="sr-only">Saving note…</span>}
         <footer {...stylex.props(styles.editorFooter)}><div {...stylex.props(styles.tools)}>
           <button type="button" aria-label="Attach an image" onClick={() => input.current?.click()} {...stylex.props(styles.iconButton)}><Icon name="image"/></button>
           <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden onChange={event => { addFiles(event.target.files); event.target.value = ''; }}/>
           <fieldset {...stylex.props(styles.colorPicker)}><legend className="sr-only">Note color</legend>{colors.map(option => <label key={option} {...stylex.props(styles.swatch, styles[option], option === color && styles.swatchSelected)}><input type="radio" name="color" value={option} checked={option === color} onChange={() => setColor(option)} aria-label={option[0].toUpperCase() + option.slice(1)} {...stylex.props(styles.radio)}/></label>)}</fieldset>
-        </div><div {...stylex.props(styles.actions)}>{note && <button type="button" aria-label="Delete note" onClick={() => deleteDialog.current?.showModal()} {...stylex.props(styles.iconButton, styles.deleteIcon)}><Icon name="trash"/></button>}<button type="submit" disabled={saving} {...stylex.props(styles.primary)}>{saving ? 'Saving…' : 'Save note'}</button></div></footer>
-      </form>
+        </div>{note && <div {...stylex.props(styles.actions)}><button type="button" aria-label="Delete note" onClick={() => deleteDialog.current?.showModal()} {...stylex.props(styles.iconButton, styles.deleteIcon)}><Icon name="trash"/></button></div>}</footer>
+      </div>
     </dialog>
     {preview && <ImagePreview preview={preview} onClose={() => setPreview(null)}/>}
     <ConfirmDialog ref={deleteDialog} title="Delete this note?" copy="This is permanent. There’s no trash to come back to." cancel="Keep note" confirm="Delete note" onConfirm={() => note && onDelete(note)}/>

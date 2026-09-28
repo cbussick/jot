@@ -11,7 +11,8 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Note', exact: true }).fill('A private thought.');
   await page.getByRole('radio', { name: 'Mint' }).check();
   await page.getByRole('button', { name: 'Pin note' }).click();
-  await page.getByRole('button', { name: 'Save note' }).click();
+  await expect(page.getByRole('button', { name: 'Save note' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close note' }).click();
   const card = page.getByRole('button', { name: 'Open note: Keep this close' });
   await expect(card).toBeVisible();
   await expect(card).toHaveCSS('background-color', 'rgb(219, 235, 225)');
@@ -51,10 +52,12 @@ test('saves a new text note when closed', async ({ page }) => {
 
 test('closes empty drafts without creating a note', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  const count = await page.getByRole('button', { name: 'Open note:', exact: false }).count();
   await page.keyboard.press('n');
   await page.getByRole('button', { name: 'Close note' }).click();
   await expect(page.getByRole('dialog', { name: 'Something worth keeping' })).not.toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open note:', exact: false })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open note:', exact: false })).toHaveCount(count);
 });
 
 test('accepts an image and keeps the editor textarea fixed', async ({ page }) => {
@@ -68,7 +71,7 @@ test('accepts an image and keeps the editor textarea fixed', async ({ page }) =>
   const after = await textarea.boundingBox();
   expect(after?.width).toBe(before?.width);
   expect(after?.height).toBe(before?.height);
-  await page.getByRole('button', { name: 'Save note' }).click();
+  await page.getByRole('button', { name: 'Close note' }).click();
   await expect(page.getByRole('button', { name: 'Open note: Coffee first.' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
 });
@@ -91,7 +94,7 @@ for (const width of [390, 1440]) {
     await page.keyboard.press('Escape');
     await expect(preview).not.toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue(`Photo preview ${width}`);
-    await page.getByRole('button', { name: 'Save note' }).click();
+    await page.getByRole('button', { name: 'Close note' }).click();
     await page.getByRole('button', { name: `Open note: Photo preview ${width}` }).click();
     await page.getByRole('button', { name: 'View image 1' }).click();
     await expect(preview.getByRole('img')).toBeVisible();
@@ -178,7 +181,7 @@ test('can receive and save a shared screenshot offline', async ({ page, context 
   await expect(page).toHaveURL(/share=/);
   await expect(page.getByRole('dialog', { name: 'Something worth keeping' }).getByRole('img')).toHaveCount(1);
   await page.getByRole('textbox', { name: 'Title' }).fill('Shared while offline');
-  await page.getByRole('button', { name: 'Save note' }).click();
+  await page.getByRole('button', { name: 'Close note' }).click();
   await expect(page.getByRole('button', { name: 'Open note: Shared while offline' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Saved on device' })).toBeVisible();
   await context.setOffline(false);
@@ -196,7 +199,7 @@ test('works offline after the first online visit and syncs on reconnect', async 
   await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
   await page.keyboard.press('n');
   await page.getByRole('textbox', { name: 'Title' }).fill('Written offline');
-  await page.getByRole('button', { name: 'Save note' }).click();
+  await page.getByRole('button', { name: 'Close note' }).click();
   await expect(page.getByRole('button', { name: 'Open note: Written offline' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Saved on device' })).toBeVisible();
   await context.setOffline(false);
