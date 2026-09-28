@@ -552,6 +552,8 @@ test('centers images and navigates and removes mixed gallery images', async ({ p
   const bounds = await editor.boundingBox();
   const photo = await editor.getByRole('button', { name: 'View image 1' }).boundingBox();
   expect(Math.abs(photo!.x + photo!.width / 2 - (bounds!.x + bounds!.width / 2))).toBeLessThan(8);
+  expect(photo!.width).toBeGreaterThan(420);
+  expect(photo!.height).toBeGreaterThan(300);
   await page.getByRole('button', { name: 'Attach an image' }).click();
   await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
   await editor.getByRole('button', { name: 'View image 1' }).click();
