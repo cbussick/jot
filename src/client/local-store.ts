@@ -48,7 +48,6 @@ export async function saveLocalNote(value: {
   const database = await databasePromise;
   const now = new Date().toISOString();
   const id = value.id ?? crypto.randomUUID();
-  const current = parseOptionalNote(await database.get('notes', id));
   const images = [...value.retainedImages];
   for (const file of value.newImages) {
     const dimensions = await imageDimensions(file);
@@ -58,18 +57,22 @@ export async function saveLocalNote(value: {
     await database.put('blobs', file, blobId);
     images.push({ id: imageId, blobId, url: '', alt: file.name, mimeType: file.type as LocalImage['mimeType'], size: file.size, ...dimensions });
   }
+  const transaction = database.transaction(['notes', 'outbox', 'meta'], 'readwrite');
+  const notes = transaction.objectStore('notes');
+  const outbox = transaction.objectStore('outbox');
+  const current = parseOptionalNote(await notes.get(id));
+  const existingOperation = parseOptionalOperation(await outbox.get(id));
+  const position = current?.position ?? Math.min(0, ...((await notes.getAll()).map(item => parseNote(item).position))) - 1;
   const note: LocalNote = {
     id, title: value.title, body: value.body, color: value.color, pinned: value.pinned,
     createdAt: value.createdAt ?? current?.createdAt ?? now,
     updatedAt: now,
-    position: current?.position ?? Math.min(0, ...((await localNotes()).map(note => note.position))) - 1,
-    version: value.version ?? current?.version ?? 0,
+    position,
+    version: current?.version ?? value.version ?? 0,
     images,
   };
-  const existingOperation = parseOptionalOperation(await database.get('outbox', id));
-  const transaction = database.transaction(['notes', 'outbox', 'meta'], 'readwrite');
-  await transaction.objectStore('notes').put(note);
-  await transaction.objectStore('outbox').put({ noteId: id, type: 'save', expectedVersion: existingOperation?.expectedVersion ?? note.version, mutationId: crypto.randomUUID() });
+  await notes.put(note);
+  await outbox.put({ noteId: id, type: 'save', expectedVersion: existingOperation?.expectedVersion ?? note.version, mutationId: crypto.randomUUID() });
   await transaction.objectStore('meta').put(true, 'initialized');
   await transaction.done;
   return note;
@@ -89,9 +92,15 @@ export async function reorderLocalNotes(ids: string[]): Promise<void> {
 export async function deleteLocalNote(note: LocalNote): Promise<void> {
   const database = await databasePromise;
   const transaction = database.transaction(['notes', 'outbox'], 'readwrite');
-  await transaction.objectStore('notes').delete(note.id);
-  if (note.version === 0) await transaction.objectStore('outbox').delete(note.id);
-  else await transaction.objectStore('outbox').put({ noteId: note.id, type: 'delete', expectedVersion: note.version, mutationId: crypto.randomUUID() });
+  const notes = transaction.objectStore('notes');
+  const outbox = transaction.objectStore('outbox');
+  const current = parseOptionalNote(await notes.get(note.id));
+  const operation = parseOptionalOperation(await outbox.get(note.id));
+  await notes.delete(note.id);
+  // A version-zero save may already be in flight. Keep its deletion queued so
+  // the server acknowledgement can advance the expected version before deleting.
+  if (!current?.version && !operation) await outbox.delete(note.id);
+  else await outbox.put({ noteId: note.id, type: 'delete', expectedVersion: operation?.expectedVersion ?? current?.version ?? note.version, mutationId: crypto.randomUUID() });
   await transaction.done;
   await removeBlobs(note);
 }
@@ -117,21 +126,27 @@ export async function syncNotes(): Promise<{ notes: LocalNote[]; pending: number
           expectedVersion: entry.expectedVersion,
           retainedImageIds,
         }, files);
-        const latestOperation = parseOptionalOperation(await database.get('outbox', entry.noteId));
-        if (latestOperation?.mutationId !== entry.mutationId) {
-          if (latestOperation?.type === 'save') {
-            const latest = parseNote(await database.get('notes', entry.noteId));
+        // Reconcile the server acknowledgement and any newer local edit in one transaction.
+        // A save can arrive while the request is in flight; never overwrite it with the old response.
+        const transaction = database.transaction(['notes', 'outbox'], 'readwrite');
+        const notes = transaction.objectStore('notes');
+        const outbox = transaction.objectStore('outbox');
+        const latestOperation = parseOptionalOperation(await outbox.get(entry.noteId));
+        if (latestOperation?.mutationId === entry.mutationId) {
+          await notes.put({ ...result.note, position: note.position });
+          await outbox.delete(entry.noteId);
+        } else if (latestOperation) {
+          if (latestOperation.type === 'save') {
+            const latest = parseNote(await notes.get(entry.noteId));
             const uploadedByBlob = new Map(localImages.map((image, index) => [image.blobId!, result.note.images[retainedImageIds.length + index]]));
             latest.images = latest.images.map(image => image.blobId && uploadedByBlob.get(image.blobId) ? uploadedByBlob.get(image.blobId)! : image);
-            latest.version = result.note.version;
-            await database.put('notes', latest);
+            await notes.put({ ...latest, version: result.note.version });
           }
-          if (latestOperation) await database.put('outbox', { ...latestOperation, expectedVersion: result.note.version });
-          await removeBlobs(note);
-          continue;
+          await outbox.put({ ...latestOperation, expectedVersion: result.note.version });
         }
+        await transaction.done;
         await removeBlobs(note);
-        await database.put('notes', { ...result.note, position: note.position });
+        continue;
       }
       const latestOperation = parseOptionalOperation(await database.get('outbox', entry.noteId));
       if (latestOperation?.mutationId === entry.mutationId) await database.delete('outbox', entry.noteId);
