@@ -45,6 +45,50 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Open note: Image note' })).not.toBeVisible();
 });
 
+test('overview shortcuts search, create, and confirm deletion only for a focused note', async ({ page }) => {
+  await page.goto('/');
+  const search = page.getByRole('searchbox');
+  await expect(page.locator('search kbd')).toHaveText('F');
+  await page.keyboard.press('f');
+  await expect(search).toBeFocused();
+  await page.keyboard.type('n/d');
+  await expect(search).toHaveValue('n/d');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await search.fill('');
+  await search.blur();
+  await page.keyboard.press('/');
+  await expect(search).not.toBeFocused();
+
+  await page.keyboard.press('n');
+  const add = page.getByRole('dialog', { name: 'Add note' });
+  await expect(add).toBeVisible();
+  await add.getByRole('textbox', { name: 'Title' }).fill('Shortcut target');
+  await add.getByRole('textbox', { name: 'Note', exact: true }).focus();
+  await page.keyboard.type('find');
+  await expect(search).not.toBeFocused();
+  await expect(add.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('find');
+  await add.getByRole('button', { name: 'Close note' }).click();
+
+  const card = page.getByRole('button', { name: 'Open note: Shortcut target' });
+  await expect(card).toBeVisible();
+  await page.keyboard.press('d');
+  await expect(page.getByRole('dialog', { name: 'Delete this note?' })).not.toBeVisible();
+  await card.focus();
+  await page.keyboard.press('d');
+  const confirmation = page.getByRole('dialog', { name: 'Delete this note?' });
+  await expect(confirmation).toBeVisible();
+  await page.keyboard.press('n');
+  await page.keyboard.press('f');
+  await expect(page.getByRole('dialog', { name: 'Add note' })).toHaveCount(0);
+  await expect(search).not.toBeFocused();
+  await confirmation.getByRole('button', { name: 'Keep note' }).click();
+  await expect(card).toBeVisible();
+  await card.focus();
+  await page.keyboard.press('d');
+  await confirmation.getByRole('button', { name: 'Delete note' }).click();
+  await expect(card).not.toBeVisible();
+});
+
 test('shows created and updated times only inside an existing note', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 700 });
   await page.goto('/');
