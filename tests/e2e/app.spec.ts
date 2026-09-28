@@ -208,6 +208,9 @@ test.describe('touch reordering', () => {
     }
     const first = page.getByRole('button', { name: 'Open note: Touch one' });
     const second = page.getByRole('button', { name: 'Open note: Touch two' });
+    // Some mobile browsers emit contextmenu during a long press; it must not interrupt dragging.
+    await first.evaluate(card => card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 })));
+    await expect(page.getByRole('menu', { name: 'Note actions' })).toHaveCount(0);
     const from = await first.boundingBox();
     const to = await second.boundingBox();
     const x = from!.x + from!.width / 2;
@@ -216,6 +219,7 @@ test.describe('touch reordering', () => {
     const client = await page.context().newCDPSession(page);
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
     await page.waitForTimeout(500);
+    await expect(page.getByRole('menu', { name: 'Note actions' })).toHaveCount(0);
     for (let step = 1; step <= 5; step++) {
       await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (destination.x - x) * step / 5, y: y + (destination.y - y) * step / 5 }] });
     }
@@ -236,6 +240,16 @@ test.describe('touch reordering', () => {
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await first.tap();
     await expect(page.getByRole('dialog', { name: 'Edit note' })).toBeVisible();
+  });
+
+  test('does not open note actions on a touchscreen with a desktop-sized viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Add a note' }).click();
+    await page.getByRole('textbox', { name: 'Title' }).fill('Hybrid touch note');
+    await page.getByRole('button', { name: 'Close note' }).click();
+    await page.getByRole('button', { name: 'Open note: Hybrid touch note' }).click({ button: 'right' });
+    await expect(page.getByRole('menu', { name: 'Note actions' })).toHaveCount(0);
   });
 });
 
