@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { LocalImage, LocalNote } from '../local-store';
 import { imageSource } from '../local-store';
 import { styles } from '../app.stylex';
@@ -11,13 +11,80 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
   onReorder: (source: string, target: string) => void;
 }) {
   const board = useRef<HTMLUListElement>(null);
-  const drag = useRef<{ source: string; target?: string; startX: number; startY: number } | null>(null);
-  const [target, setTarget] = useState<string>();
-  useMasonry(board, notes);
-  const start = (event: React.PointerEvent, id: string) => {
-    if (event.button !== 0) return;
+  const drag = useRef<{ source: string; pointerId: number; touch: boolean; active: boolean; startX: number; startY: number } | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const suppressClick = useRef<string | undefined>(undefined);
+  const preview = useRef<{ source: string; target: string } | null>(null);
+  const ghost = useRef<HTMLElement | null>(null);
+  const positions = useRef<Map<string, DOMRect> | null>(null);
+  const [placement, setPlacement] = useState<{ source: string; target: string } | null>(null);
+  const displayed = useMemo(() => {
+    if (!placement) return notes;
+    const ordered = [...notes];
+    const from = ordered.findIndex(note => note.id === placement.source);
+    const to = ordered.findIndex(note => note.id === placement.target);
+    if (from >= 0 && to >= 0) ordered.splice(to, 0, ...ordered.splice(from, 1));
+    return ordered;
+  }, [notes, placement]);
+  useMasonry(board, displayed);
+  useLayoutEffect(() => {
+    const before = positions.current;
+    positions.current = null;
+    if (!before || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    board.current?.querySelectorAll<HTMLElement>('[data-item-id]').forEach(item => {
+      const old = before.get(item.dataset.itemId!);
+      if (!old || item.dataset.itemId === drag.current?.source) return;
+      const next = item.getBoundingClientRect();
+      const dx = old.left - next.left, dy = old.top - next.top;
+      if (dx || dy) item.animate([{ transform: `translate3d(${dx}px, ${dy}px, 0)` }, { transform: 'translate3d(0, 0, 0)' }], { duration: 180, easing: 'cubic-bezier(0.77, 0, 0.175, 1)' });
+    });
+  }, [displayed]);
+  const snapshot = () => {
+    positions.current = new Map(Array.from(board.current?.querySelectorAll<HTMLElement>('[data-item-id]') ?? [], item => [item.dataset.itemId!, item.getBoundingClientRect()]));
+  };
+  const removeGhost = () => { ghost.current?.remove(); ghost.current = null; };
+  const activate = (id: string) => {
+    const card = Array.from(board.current?.querySelectorAll<HTMLElement>('[data-item-id]') ?? []).find(item => item.dataset.itemId === id)?.firstElementChild as HTMLElement | undefined;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const copy = card.cloneNode(true) as HTMLElement;
+    copy.removeAttribute('data-note-id');
+    copy.setAttribute('aria-hidden', 'true');
+    Object.assign(copy.style, { position: 'fixed', left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`, margin: '0', zIndex: '50', pointerEvents: 'none', boxShadow: '0 18px 42px #26363040', cursor: 'grabbing' });
+    document.body.append(copy);
+    ghost.current = copy;
+    preview.current = { source: id, target: id };
+    setPlacement(preview.current);
+  };
+  useEffect(() => {
+    // Touch-action stays auto so a normal swipe can scroll. Once held, block scrolling while dragging.
+    const preventScroll = (event: TouchEvent) => {
+      if (drag.current?.touch && drag.current.active) event.preventDefault();
+    };
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+    return () => { document.removeEventListener('touchmove', preventScroll); clearTimeout(timer.current); removeGhost(); };
+  }, []);
+  const cancel = () => {
+    clearTimeout(timer.current);
+    drag.current = null;
+    removeGhost();
+    if (preview.current) snapshot();
+    preview.current = null;
+    setPlacement(null);
+  };
+  const start = (event: React.PointerEvent<HTMLButtonElement>, id: string) => {
+    if (event.button !== 0 || !event.isPrimary) return;
+    cancel();
     event.currentTarget.setPointerCapture(event.pointerId);
-    drag.current = { source: id, startX: event.clientX, startY: event.clientY };
+    const touch = event.pointerType === 'touch';
+    drag.current = { source: id, pointerId: event.pointerId, touch, active: false, startX: event.clientX, startY: event.clientY };
+    if (touch) timer.current = setTimeout(() => {
+      if (drag.current?.pointerId === event.pointerId) {
+        drag.current.active = true;
+        suppressClick.current = id;
+        activate(id);
+      }
+    }, 400);
   };
   const noteAt = (event: React.PointerEvent) => {
     const item = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-item-id]');
@@ -25,26 +92,41 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
   };
   const move = (event: React.PointerEvent) => {
     const active = drag.current;
-    if (!active) return;
-    if (Math.hypot(event.clientX - active.startX, event.clientY - active.startY) < 6 && !active.target) return;
+    if (!active || active.pointerId !== event.pointerId) return;
+    if (!active.active) {
+      if (Math.hypot(event.clientX - active.startX, event.clientY - active.startY) < 6) return;
+      if (active.touch) { cancel(); return; } // A swipe before the hold is a scroll, not a drag.
+      active.active = true;
+      suppressClick.current = active.source;
+      activate(active.source);
+    }
+    if (ghost.current) ghost.current.style.transform = `translate3d(${event.clientX - active.startX}px, ${event.clientY - active.startY}px, 0)`;
     const id = noteAt(event);
-    active.target = id !== active.source ? id : undefined;
-    setTarget(active.target);
+    if (id && id !== active.source && id !== preview.current?.target) {
+      snapshot();
+      preview.current = { source: active.source, target: id };
+      setPlacement(preview.current);
+    }
   };
   const end = (event: React.PointerEvent) => {
     const active = drag.current;
-    drag.current = null; setTarget(undefined);
-    const id = noteAt(event);
-    if (active && id && id !== active.source) onReorder(active.source, id);
+    if (!active || active.pointerId !== event.pointerId) return;
+    const id = active.active ? noteAt(event) : undefined;
+    const destination = id === active.source ? preview.current?.target : id;
+    cancel();
+    if (destination && destination !== active.source) onReorder(active.source, destination);
+    if (active.active) setTimeout(() => { if (suppressClick.current === active.source) suppressClick.current = undefined; }, 0);
   };
   return <section {...stylex.props(styles.section)}>
     {heading && <h2 {...stylex.props(styles.sectionHeading)}>{heading}</h2>}
     <ul ref={board} aria-label={label} {...stylex.props(styles.board)}>
-      {notes.map((note, index) => <NoteCard key={note.id} note={note} onOpen={onOpen} onPin={onPin} dropTarget={target === note.id}
-        onPointerDown={event => start(event, note.id)} onPointerMove={move} onPointerUp={end} onPointerCancel={() => { drag.current = null; setTarget(undefined); }}
+      {displayed.map((note) => <NoteCard key={note.id} note={note} onPin={onPin} dropTarget={placement?.source === note.id}
+        onPointerDown={event => start(event, note.id)} onPointerMove={move} onPointerUp={end} onPointerCancel={() => { cancel(); suppressClick.current = undefined; }}
+        onCardClick={() => { if (suppressClick.current === note.id) { suppressClick.current = undefined; return; } onOpen(note); }}
         onKeyDown={event => {
           if (event.key !== 'ArrowLeft' && event.key !== 'ArrowUp' && event.key !== 'ArrowRight' && event.key !== 'ArrowDown') return;
           event.preventDefault();
+          const index = notes.findIndex(item => item.id === note.id);
           const next = notes[index + (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1)];
           if (next) onReorder(note.id, next.id);
         }}/>) }
@@ -52,15 +134,15 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
   </section>;
 }
 
-function NoteCard({ note, onOpen, onPin, dropTarget, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onKeyDown }: {
-  note: LocalNote; onOpen: (note: LocalNote) => void; onPin: (note: LocalNote) => void; dropTarget: boolean;
+function NoteCard({ note, onCardClick, onPin, dropTarget, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onKeyDown }: {
+  note: LocalNote; onCardClick: () => void; onPin: (note: LocalNote) => void; dropTarget: boolean;
   onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void; onPointerCancel: () => void; onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   const image = note.images[0];
   return <li data-item-id={note.id} {...stylex.props(styles.noteItem, dropTarget && styles.dropTarget)}>
-    <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} onClick={() => onOpen(note)} {...stylex.props(styles.noteCard, styles[note.color])}>
+    <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} title="Drag to reorder · arrow keys to move" onClick={onCardClick} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onContextMenu={event => event.preventDefault()} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>
       {image && <LocalPhoto image={image}/>} 
       {note.images.length > 1 && <span {...stylex.props(styles.imageNumber)}><Icon name="image" width={14}/>{note.images.length}</span>}
       <span {...stylex.props(styles.noteContent, image && styles.imageContent)}>
@@ -69,8 +151,7 @@ function NoteCard({ note, onOpen, onPin, dropTarget, onPointerDown, onPointerMov
         <time dateTime={note.updatedAt} {...stylex.props(styles.noteDate)}>{formatDate(note.updatedAt)}</time>
       </span>
     </button>
-    <button type="button" aria-label={`Move note: ${note.title || note.body || 'Image note'}. Drag or use arrow keys`} title="Drag to reorder · arrow keys to move" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onKeyDown={onKeyDown} {...stylex.props(styles.dragHandle)}>⠿</button>
-    <button type="button" data-pin-id={note.id} aria-label={`${note.pinned ? 'Unpin' : 'Pin'} note: ${note.title || note.body || 'Image note'}`} aria-pressed={note.pinned} title={note.pinned ? 'Unpin note' : 'Pin note'} onClick={() => onPin(note)} {...stylex.props(styles.pin, note.pinned ? styles.pinned : styles.pinHiddenDesktop)}><Icon name="pin" width={18}/></button>
+    {!dropTarget && <button type="button" data-pin-id={note.id} aria-label={`${note.pinned ? 'Unpin' : 'Pin'} note: ${note.title || note.body || 'Image note'}`} aria-pressed={note.pinned} title={note.pinned ? 'Unpin note' : 'Pin note'} onClick={() => onPin(note)} {...stylex.props(styles.pin, note.pinned ? styles.pinned : styles.pinHiddenDesktop)}><Icon name="pin" width={18}/></button>}
   </li>;
 }
 
@@ -109,7 +190,7 @@ function useMasonry(ref: React.RefObject<HTMLUListElement | null>, notes: LocalN
     const observer = new ResizeObserver(layout);
     observer.observe(board);
     board.querySelectorAll('img').forEach(image => image.addEventListener('load', layout));
-    requestAnimationFrame(layout);
+    layout();
     return () => observer.disconnect();
   }, [ref, notes]);
 }
