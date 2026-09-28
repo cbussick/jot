@@ -86,11 +86,11 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
       }
     }, 400);
   };
-  const noteAt = (event: React.PointerEvent) => {
+  const noteAt = (event: Pick<PointerEvent, 'clientX' | 'clientY'>) => {
     const item = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-item-id]');
     return item && board.current?.contains(item) ? item.dataset.itemId : undefined;
   };
-  const move = (event: React.PointerEvent) => {
+  const move = (event: PointerEvent) => {
     const active = drag.current;
     if (!active || active.pointerId !== event.pointerId) return;
     if (!active.active) {
@@ -108,20 +108,35 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
       setPlacement(preview.current);
     }
   };
-  const end = (event: React.PointerEvent) => {
+  const end = (event: PointerEvent) => {
     const active = drag.current;
     if (!active || active.pointerId !== event.pointerId) return;
     const id = active.active ? noteAt(event) : undefined;
-    const destination = id === active.source ? preview.current?.target : id;
+    const insideBoard = board.current?.getBoundingClientRect();
+    const inBoard = insideBoard && event.clientX >= insideBoard.left && event.clientX <= insideBoard.right && event.clientY >= insideBoard.top && event.clientY <= insideBoard.bottom;
+    const destination = id && id !== active.source ? id : inBoard ? preview.current?.target : undefined;
     cancel();
     if (destination && destination !== active.source) onReorder(active.source, destination);
     if (active.active) setTimeout(() => { if (suppressClick.current === active.source) suppressClick.current = undefined; }, 0);
   };
+  // Captured pointers can be lost when React moves a card in the masonry grid.
+  // Listen at the document so release and cancellation still finish the drag.
+  useEffect(() => {
+    const onCancel = () => { cancel(); suppressClick.current = undefined; };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', end);
+    document.addEventListener('pointercancel', onCancel);
+    return () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', end);
+      document.removeEventListener('pointercancel', onCancel);
+    };
+  });
   return <section {...stylex.props(styles.section)}>
     {heading && <h2 {...stylex.props(styles.sectionHeading)}>{heading}</h2>}
     <ul ref={board} aria-label={label} {...stylex.props(styles.board)}>
       {displayed.map((note) => <NoteCard key={note.id} note={note} onPin={onPin} dropTarget={placement?.source === note.id}
-        onPointerDown={event => start(event, note.id)} onPointerMove={move} onPointerUp={end} onPointerCancel={() => { cancel(); suppressClick.current = undefined; }}
+        onPointerDown={event => start(event, note.id)}
         onCardClick={() => { if (suppressClick.current === note.id) { suppressClick.current = undefined; return; } onOpen(note); }}
         onKeyDown={event => {
           if (event.key !== 'ArrowLeft' && event.key !== 'ArrowUp' && event.key !== 'ArrowRight' && event.key !== 'ArrowDown') return;
@@ -134,15 +149,14 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
   </section>;
 }
 
-function NoteCard({ note, onCardClick, onPin, dropTarget, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onKeyDown }: {
+function NoteCard({ note, onCardClick, onPin, dropTarget, onPointerDown, onKeyDown }: {
   note: LocalNote; onCardClick: () => void; onPin: (note: LocalNote) => void; dropTarget: boolean;
   onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => void;
-  onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void;
-  onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void; onPointerCancel: () => void; onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   const image = note.images[0];
   return <li data-item-id={note.id} {...stylex.props(styles.noteItem, dropTarget && styles.dropTarget)}>
-    <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} title="Drag to reorder · arrow keys to move" onClick={onCardClick} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onContextMenu={event => event.preventDefault()} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>
+    <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} title="Drag to reorder · arrow keys to move" onClick={onCardClick} onPointerDown={onPointerDown} onContextMenu={event => event.preventDefault()} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>
       {image && <LocalPhoto image={image}/>} 
       {note.images.length > 1 && <span {...stylex.props(styles.imageNumber)}><Icon name="image" width={14}/>{note.images.length}</span>}
       <span {...stylex.props(styles.noteContent, image && styles.imageContent)}>
