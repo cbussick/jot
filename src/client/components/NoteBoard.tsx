@@ -13,7 +13,7 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onContextMenu,
   onReorder: (source: string, target: string) => void;
 }) {
   const board = useRef<HTMLUListElement>(null);
-  const drag = useRef<{ source: string; pointerId: number; touch: boolean; active: boolean; startX: number; startY: number } | null>(null);
+  const drag = useRef<{ source: string; pointerId: number; touch: boolean; active: boolean; startX: number; startY: number; origin: DOMRect } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const suppressClick = useRef<string | undefined>(undefined);
   const preview = useRef<{ source: string; target: string } | null>(null);
@@ -79,7 +79,7 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onContextMenu,
     cancel();
     event.currentTarget.setPointerCapture(event.pointerId);
     const touch = event.pointerType === 'touch';
-    drag.current = { source: id, pointerId: event.pointerId, touch, active: false, startX: event.clientX, startY: event.clientY };
+    drag.current = { source: id, pointerId: event.pointerId, touch, active: false, startX: event.clientX, startY: event.clientY, origin: event.currentTarget.getBoundingClientRect() };
     if (touch) timer.current = setTimeout(() => {
       if (drag.current?.pointerId === event.pointerId) {
         drag.current.active = true;
@@ -88,6 +88,7 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onContextMenu,
       }
     }, 400);
   };
+  const within = (event: Pick<PointerEvent, 'clientX' | 'clientY'>, rect: DOMRect) => event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
   const noteAt = (event: Pick<PointerEvent, 'clientX' | 'clientY'>) => {
     const item = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-item-id]');
     return item && board.current?.contains(item) ? item.dataset.itemId : undefined;
@@ -103,6 +104,16 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onContextMenu,
       activate(active.source);
     }
     if (ghost.current) ghost.current.style.transform = `translate3d(${event.clientX - active.startX}px, ${event.clientY - active.startY}px, 0)`;
+    // The target moves into the source's old slot during preview. Returning there must undo
+    // the proposed reorder, not keep targeting the card now occupying that slot.
+    if (within(event, active.origin)) {
+      if (preview.current?.target !== active.source) {
+        snapshot();
+        preview.current = { source: active.source, target: active.source };
+        setPlacement(preview.current);
+      }
+      return;
+    }
     const id = noteAt(event);
     if (id && id !== active.source && id !== preview.current?.target) {
       snapshot();
@@ -113,10 +124,10 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onContextMenu,
   const end = (event: PointerEvent) => {
     const active = drag.current;
     if (!active || active.pointerId !== event.pointerId) return;
-    const id = active.active ? noteAt(event) : undefined;
+    const id = active.active && !within(event, active.origin) ? noteAt(event) : undefined;
     const insideBoard = board.current?.getBoundingClientRect();
     const inBoard = insideBoard && event.clientX >= insideBoard.left && event.clientX <= insideBoard.right && event.clientY >= insideBoard.top && event.clientY <= insideBoard.bottom;
-    const destination = id && id !== active.source ? id : inBoard ? preview.current?.target : undefined;
+    const destination = within(event, active.origin) ? undefined : id && id !== active.source ? id : inBoard ? preview.current?.target : undefined;
     cancel();
     if (destination && destination !== active.source) onReorder(active.source, destination);
     if (active.active) setTimeout(() => { if (suppressClick.current === active.source) suppressClick.current = undefined; }, 0);
