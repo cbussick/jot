@@ -101,11 +101,17 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
   return <>
     <dialog ref={dialog} aria-label={note ? 'Edit note' : 'Add note'} onCancel={event => { if (event.target !== event.currentTarget) return; event.preventDefault(); requestClose(); }} onPaste={pasteImages} onClick={event => { if (event.target !== event.currentTarget) return; const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) requestClose(); }} {...stylex.props(styles.dialog, styles.editor, styles[color])}>
       <div {...stylex.props(styles.editorForm)}>
-        <header {...stylex.props(styles.editorHeader)}><div {...stylex.props(styles.headerActions)}>
-          {note && <button type="button" aria-label="Delete note" onClick={() => deleteDialog.current?.showModal()} {...stylex.props(styles.iconButton, styles.deleteIcon)}><Icon name="trash"/></button>}
-          <button type="button" aria-label={pinned ? 'Unpin note' : 'Pin note'} aria-pressed={pinned} onClick={() => setPinned(value => !value)} {...stylex.props(styles.pinText, pinned && styles.pinned)}><Icon name="pin" width={18}/></button>
-          <button type="button" aria-label="Close note" disabled={saving} onClick={requestClose} {...stylex.props(styles.iconButton)}><Icon name="x"/></button>
-        </div></header>
+        <header {...stylex.props(styles.editorHeader)}>
+          {note && <div {...stylex.props(styles.noteTimestamps)}>
+            <span>Created <time dateTime={note.createdAt}>{formatTimestamp(note.createdAt)}</time></span>
+            <span>Updated <time dateTime={note.updatedAt}>{formatTimestamp(note.updatedAt)}</time></span>
+          </div>}
+          <div {...stylex.props(styles.headerActions)}>
+            {note && <button type="button" aria-label="Delete note" onClick={() => deleteDialog.current?.showModal()} {...stylex.props(styles.iconButton, styles.deleteIcon)}><Icon name="trash"/></button>}
+            <button type="button" aria-label={pinned ? 'Unpin note' : 'Pin note'} aria-pressed={pinned} onClick={() => setPinned(value => !value)} {...stylex.props(styles.pinText, pinned && styles.pinned)}><Icon name="pin" width={18}/></button>
+            <button type="button" aria-label="Close note" disabled={saving} onClick={requestClose} {...stylex.props(styles.iconButton)}><Icon name="x"/></button>
+          </div>
+        </header>
         {gallery.length === 1 && <div {...stylex.props(styles.editorImages)}><div {...stylex.props(styles.editorImage, styles.editorImageCentered, styles.editorImageEnd)}>
           <button type="button" aria-label="View image 1" onClick={() => setPreviewIndex(0)} {...stylex.props(styles.photoButton)}>{'image' in gallery[0] ? <LocalPhoto image={gallery[0].image} className={stylex.props(styles.editorPhoto).className}/> : <img src={gallery[0].src} alt={gallery[0].alt} {...stylex.props(styles.editorPhoto)}/>}</button>
           <button type="button" aria-label="Remove image 1" onClick={() => requestImageRemoval(gallery[0].removal)} {...stylex.props(styles.imageRemove)}><Icon name="trash" width={18}/></button>
@@ -157,6 +163,10 @@ export function ConfirmDialog({ ref, title, copy, cancel, confirm, onConfirm }: 
 }) {
   const headingId = `${confirm.toLowerCase().replaceAll(' ', '-')}-heading`;
   return <dialog ref={ref} aria-labelledby={headingId} {...stylex.props(styles.dialog, styles.smallDialog)}><h2 id={headingId} {...stylex.props(styles.dialogTitle)}>{title}</h2><p {...stylex.props(styles.dialogCopy)}>{copy}</p><div {...stylex.props(styles.dialogActions)}><button type="button" onClick={() => ref.current?.close()} {...stylex.props(styles.secondary)}>{cancel}</button><button type="button" onClick={() => { ref.current?.close(); void onConfirm(); }} {...stylex.props(styles.danger)}>{confirm}</button></div></dialog>;
+}
+
+function formatTimestamp(value: string) {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
 function snapshot(value: { title: string; body: string; color: NoteColor; pinned: boolean; retainedImages: LocalImage[]; newImages: File[] }) {
