@@ -126,7 +126,7 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
         <footer {...stylex.props(styles.editorFooter)}><div {...stylex.props(styles.tools)}>
           <button type="button" aria-label="Attach an image" onClick={() => input.current?.click()} {...stylex.props(styles.iconButton)}><Icon name="image"/></button>
           <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden onChange={event => { addFiles(event.target.files); event.target.value = ''; }}/>
-          <fieldset {...stylex.props(styles.colorPicker)}><legend className="sr-only">Note color</legend>{colors.map(option => <label key={option} {...stylex.props(styles.swatch, styles[option], option === color && styles.swatchSelected)}><input type="radio" name="color" value={option} checked={option === color} onChange={() => setColor(option)} aria-label={option[0].toUpperCase() + option.slice(1)} {...stylex.props(styles.radio)}/></label>)}</fieldset>
+          <ColorPicker color={color} onChange={setColor}/>
         </div><button type="button" disabled={saving} onClick={requestClose} {...stylex.props(styles.secondary)}>Close</button></footer>
       </div>
     </dialog>
@@ -134,6 +134,34 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     <ConfirmDialog ref={removeImageDialog} title="Remove this image?" copy="This image will no longer be attached to this note." cancel="Keep image" confirm="Remove image" onConfirm={confirmImageRemoval}/>
     <ConfirmDialog ref={deleteDialog} title="Delete this note?" copy="This is permanent. There’s no trash to come back to." cancel="Keep note" confirm="Delete note" onConfirm={() => note && onDelete(note)}/>
   </>;
+}
+
+function ColorPicker({ color, onChange }: { color: NoteColor; onChange: (color: NoteColor) => void }) {
+  const [open, setOpen] = useState(false);
+  const container = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    container.current?.querySelector<HTMLInputElement>('input:checked')?.focus();
+    const dismiss = (event: PointerEvent) => {
+      if (!container.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, [open]);
+  return <div ref={container} onKeyDown={event => {
+    if (event.key === 'Escape' && open) {
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+      trigger.current?.focus();
+    }
+  }} {...stylex.props(styles.colorPickerAnchor)}>
+    <button ref={trigger} type="button" aria-label="Note color" aria-expanded={open} aria-controls="note-color-choices" onClick={() => setOpen(value => !value)} {...stylex.props(styles.iconButton)}><Icon name="palette"/></button>
+    {open && <div id="note-color-choices" {...stylex.props(styles.colorPopover)}>
+      <fieldset {...stylex.props(styles.colorPicker)}><legend className="sr-only">Note color</legend>{colors.map(option => <label key={option} {...stylex.props(styles.swatch, styles[option], option === color && styles.swatchSelected)}><input type="radio" name="color" value={option} checked={option === color} onClick={() => { if (option === color) { setOpen(false); trigger.current?.focus(); } }} onChange={() => { onChange(option); setOpen(false); trigger.current?.focus(); }} aria-label={option[0].toUpperCase() + option.slice(1)} {...stylex.props(styles.radio)}/></label>)}</fieldset>
+    </div>}
+  </div>;
 }
 
 type GalleryItem = { removal: { kind: 'retained'; id: string } | { kind: 'new'; index: number } } & ({ image: LocalImage } | { src: string; alt: string });

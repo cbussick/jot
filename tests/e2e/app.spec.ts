@@ -10,7 +10,8 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await page.keyboard.press('n');
   await page.getByRole('textbox', { name: 'Title' }).fill('Keep this close');
   await page.getByRole('textbox', { name: 'Note', exact: true }).fill('A private thought.');
-  await page.getByRole('radio', { name: 'Mint' }).check();
+  await page.getByRole('button', { name: 'Note color' }).click();
+  await page.getByRole('radio', { name: 'Mint' }).click();
   const editorPin = page.getByRole('button', { name: 'Pin note' });
   await expect(editorPin.locator('svg path').first()).not.toHaveAttribute('fill', 'currentColor');
   await editorPin.click();
@@ -43,6 +44,41 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await page.getByRole('button', { name: 'Delete note' }).click();
   await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
   await expect(page.getByRole('button', { name: 'Open note: Image note' })).not.toBeVisible();
+});
+
+test('note colors stay in a palette popover that can be dismissed', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New note' }).click();
+  const editor = page.getByRole('dialog', { name: 'Add note' });
+  const palette = editor.getByRole('button', { name: 'Note color' });
+  await expect(palette).toHaveAttribute('aria-expanded', 'false');
+  await expect(editor.getByRole('radio')).toHaveCount(0);
+  await palette.click();
+  await expect(palette).toHaveAttribute('aria-expanded', 'true');
+  await expect(editor.getByRole('radio', { name: 'Paper' })).toBeChecked();
+  await editor.getByRole('radio', { name: 'Paper' }).click();
+  await expect(editor.getByRole('radio')).toHaveCount(0);
+  await palette.click();
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeVisible();
+  await expect(palette).toBeFocused();
+  await expect(editor.getByRole('radio')).toHaveCount(0);
+  await palette.click();
+  await editor.getByRole('textbox', { name: 'Title' }).click();
+  await expect(editor.getByRole('radio')).toHaveCount(0);
+  await palette.click();
+  await editor.getByRole('radio', { name: 'Peach' }).click();
+  await expect(editor).toHaveCSS('background-color', 'rgb(246, 223, 210)');
+  await expect(editor.getByRole('radio')).toHaveCount(0);
+  await editor.getByRole('textbox', { name: 'Title' }).fill('Palette note');
+  await editor.getByRole('button', { name: 'Close note' }).click();
+  const card = page.getByRole('button', { name: 'Open note: Palette note' });
+  await expect(card).toHaveCSS('background-color', 'rgb(246, 223, 210)');
+  await card.click();
+  await page.getByRole('dialog', { name: 'Edit note' }).getByRole('button', { name: 'Delete note' }).click();
+  await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
+  await expect(card).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
 });
 
 test('overview shortcuts search, create, and confirm deletion only for a focused note', async ({ page }) => {

@@ -1,6 +1,6 @@
 import type { SVGProps } from 'react';
 
-type IconName = 'search' | 'plus' | 'image' | 'pen' | 'offline' | 'cloud-check' | 'refresh' | 'sort' | 'x' | 'trash' | 'pin' | 'pin-filled';
+type IconName = 'search' | 'plus' | 'image' | 'pen' | 'offline' | 'cloud-check' | 'refresh' | 'sort' | 'x' | 'trash' | 'pin' | 'pin-filled' | 'palette';
 const paths: Record<IconName, React.ReactNode> = {
   search: <><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></>,
   plus: <path d="M12 5v14M5 12h14"/>,
@@ -14,6 +14,7 @@ const paths: Record<IconName, React.ReactNode> = {
   trash: <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>,
   pin: <><path d="M9 3h6l-1 6 4 4v2H6v-2l4-4-1-6Z"/><path d="M12 15v6"/></>,
   'pin-filled': <><path d="M9 3h6l-1 6 4 4v2H6v-2l4-4-1-6Z" fill="currentColor"/><path d="M12 15v6"/></>,
+  palette: <><path d="M12 2.5C6.5 2.5 2.5 6.6 2.5 12S6.7 21.5 12 21.5c1.7 0 2.6-1 2.6-2.2 0-.9-.5-1.4-.5-2.1 0-1 .8-1.7 1.8-1.7h2.4c2.1 0 3.2-1.5 3.2-3.4C21.5 6.6 17.4 2.5 12 2.5Z"/><circle cx="7.5" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="6.5" r="1" fill="currentColor" stroke="none"/><circle cx="14" cy="6.5" r="1" fill="currentColor" stroke="none"/><circle cx="17.5" cy="10.5" r="1" fill="currentColor" stroke="none"/></>,
 };
 export function Icon({ name, ...props }: { name: IconName } & SVGProps<SVGSVGElement>) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{paths[name]}</svg>;
