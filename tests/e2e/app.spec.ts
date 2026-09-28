@@ -73,6 +73,40 @@ test('shows the simplified copy and gives sync its own dismissible dialog', asyn
   await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
 });
 
+test('keeps the header in view and switches to a floating create action when capture is covered', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 700 });
+  await page.goto('/');
+  await page.locator('#main').evaluate(main => { main.style.minHeight = '200vh'; });
+  const header = page.locator('#root > header');
+  const floating = page.getByRole('navigation', { name: 'Create a note' });
+  const capture = page.getByRole('button', { name: 'Add a note' });
+  await expect(floating).toBeHidden();
+  // Use the capture's actual edge, rather than a hard-coded scroll distance.
+  const scrollDistance = await capture.evaluate(button => button.parentElement!.getBoundingClientRect().bottom - document.querySelector('#root > header')!.getBoundingClientRect().bottom);
+  await page.evaluate(distance => window.scrollTo(0, distance - 2), scrollDistance);
+  await expect(floating).toBeHidden();
+  await page.evaluate(distance => window.scrollTo(0, distance + 2), scrollDistance);
+  await expect(floating).toBeVisible();
+  expect(await header.evaluate(element => element.getBoundingClientRect().top)).toBe(0);
+  await floating.getByRole('button', { name: 'New note' }).click();
+  await expect(page.getByRole('dialog', { name: 'Something worth keeping' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(floating).toBeHidden();
+  await expect(capture).toBeVisible();
+});
+
+test('keeps the mobile create action visible while the header sticks', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.goto('/');
+  await page.locator('#main').evaluate(main => { main.style.minHeight = '200vh'; });
+  const floating = page.getByRole('navigation', { name: 'Create a note' });
+  await expect(floating).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await expect(floating).toBeVisible();
+  expect(await page.locator('#root > header').evaluate(element => element.getBoundingClientRect().top)).toBe(0);
+});
+
 test('pins from the board and keeps pinned controls visible', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
