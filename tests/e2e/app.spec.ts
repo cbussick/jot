@@ -11,7 +11,10 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Title' }).fill('Keep this close');
   await page.getByRole('textbox', { name: 'Note', exact: true }).fill('A private thought.');
   await page.getByRole('radio', { name: 'Mint' }).check();
-  await page.getByRole('button', { name: 'Pin note' }).click();
+  const editorPin = page.getByRole('button', { name: 'Pin note' });
+  await expect(editorPin.locator('svg path').first()).not.toHaveAttribute('fill', 'currentColor');
+  await editorPin.click();
+  await expect(page.getByRole('button', { name: 'Unpin note' }).locator('svg path').first()).toHaveAttribute('fill', 'currentColor');
   await expect(page.getByRole('button', { name: 'Save note' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Close note' }).click();
   const card = page.getByRole('button', { name: 'Open note: Keep this close' });
@@ -110,6 +113,7 @@ test('pins from the board and keeps pinned controls visible', async ({ page }) =
   const pin = page.getByRole('button', { name: 'Pin note: Board pin test' });
   await page.mouse.move(0, 0);
   await expect(pin).toHaveCSS('opacity', '0');
+  await expect(pin.locator('svg path').first()).not.toHaveAttribute('fill', 'currentColor');
   await card.hover();
   await expect(pin).toHaveCSS('opacity', '1');
   await pin.hover();
@@ -121,6 +125,7 @@ test('pins from the board and keeps pinned controls visible', async ({ page }) =
 
   await pin.click();
   const unpin = page.getByRole('button', { name: 'Unpin note: Board pin test' });
+  await expect(unpin.locator('svg path').first()).toHaveAttribute('fill', 'currentColor');
   await page.mouse.move(0, 0);
   await expect(unpin).toHaveCSS('opacity', '1');
   await expect(page.getByRole('heading', { name: 'Pinned', exact: true })).toBeVisible();
@@ -131,6 +136,7 @@ test('pins from the board and keeps pinned controls visible', async ({ page }) =
   await page.getByRole('heading', { name: 'Your notes' }).click();
   await page.mouse.move(0, 0);
   await expect(pin).toHaveCSS('opacity', '0');
+  await expect(pin.locator('svg path').first()).not.toHaveAttribute('fill', 'currentColor');
   await expect(page.getByRole('dialog', { name: 'Edit note' })).not.toBeVisible();
 });
 

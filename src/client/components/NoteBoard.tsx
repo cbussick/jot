@@ -178,7 +178,7 @@ function NoteCard({ note, onCardClick, onPin, onContextMenu, dropTarget, onPoint
         <time dateTime={note.updatedAt} {...stylex.props(styles.noteDate)}>{formatDate(note.updatedAt)}</time>
       </span>
     </button>
-    {!dropTarget && <button type="button" data-pin-id={note.id} aria-label={`${note.pinned ? 'Unpin' : 'Pin'} note: ${note.title || note.body || 'Image note'}`} aria-pressed={note.pinned} title={note.pinned ? 'Unpin note' : 'Pin note'} onClick={() => onPin(note)} {...stylex.props(styles.pin, note.pinned ? styles.pinned : styles.pinHiddenDesktop)}><Icon name="pin" width={18}/></button>}
+    {!dropTarget && <button type="button" data-pin-id={note.id} aria-label={`${note.pinned ? 'Unpin' : 'Pin'} note: ${note.title || note.body || 'Image note'}`} aria-pressed={note.pinned} title={note.pinned ? 'Unpin note' : 'Pin note'} onClick={() => onPin(note)} {...stylex.props(styles.pin, note.pinned ? styles.pinned : styles.pinHiddenDesktop)}><Icon name={note.pinned ? 'pin-filled' : 'pin'} width={18}/></button>}
   </li>;
 }
 
