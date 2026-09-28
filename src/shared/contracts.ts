@@ -20,6 +20,7 @@ export const noteSchema = z.object({
   body: z.string().max(20_000),
   color: noteColorSchema,
   pinned: z.boolean(),
+  position: z.number().int(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   version: z.number().int().positive(),
@@ -42,6 +43,7 @@ export const noteWriteSchema = z.object({
 });
 export type NoteWrite = z.infer<typeof noteWriteSchema>;
 
+export const reorderNotesSchema = z.object({ ids: z.array(z.uuid()).max(10000).refine(ids => new Set(ids).size === ids.length) });
 export const deleteNoteSchema = z.object({ expectedVersion: z.number().int().positive() });
 export const noteIdParamsSchema = z.object({ id: z.uuid() });
 

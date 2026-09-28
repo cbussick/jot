@@ -8,7 +8,7 @@ import { Editor, type EditorValue } from './components/Editor';
 import { Icon } from './components/Icon';
 import { NoteBoard } from './components/NoteBoard';
 import { clearShares, discardShare, getShare } from './incoming-share';
-import { clearLocalData, deleteLocalNote, hasLocalData, localNotes, saveLocalNote, syncNotes, type LocalNote } from './local-store';
+import { clearLocalData, deleteLocalNote, hasLocalData, localNotes, reorderLocalNotes, saveLocalNote, syncNotes, type LocalNote } from './local-store';
 
 type SyncState = 'connecting' | 'syncing' | 'synced' | 'local' | 'offline' | 'error';
 
@@ -118,6 +118,23 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     setNotes(await localNotes()); notify(note.pinned ? 'Note unpinned' : 'Note pinned'); void synchronize();
     requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-pin-id="${note.id}"]`)?.focus({ preventScroll: true }));
   };
+  const reorder = async (source: string, target: string) => {
+    const moving = notes.find(note => note.id === source);
+    if (!moving || moving.pinned !== notes.find(note => note.id === target)?.pinned) return;
+    const group = notes.filter(note => note.pinned === moving.pinned);
+    const from = group.findIndex(note => note.id === source);
+    const to = group.findIndex(note => note.id === target);
+    if (from < 0 || to < 0 || from === to) return;
+    group.splice(to, 0, ...group.splice(from, 1));
+    let index = 0;
+    const ordered = notes.map(note => note.pinned === moving.pinned ? group[index++] : note);
+    setNotes(ordered);
+    try {
+      await reorderLocalNotes(ordered.map(note => note.id));
+      setPending(count => count + 1);
+      void synchronize();
+    } catch { setNotes(await localNotes()); notify('Could not reorder notes. Try again.'); }
+  };
   const chooseImages = (files: FileList | null) => {
     if (!files?.length) return;
     setEditor({ files: [...files] });
@@ -144,9 +161,9 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     </header>
     <main id="main" {...stylex.props(styles.workspace)}><section {...stylex.props(styles.pageHeading)}><h1 {...stylex.props(styles.h1)}>Your notes</h1></section>
       <div {...stylex.props(styles.capture)}><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.captureText)}><Icon name="pen" {...stylex.props(styles.capturePencil)}/><span>A thought worth keeping…</span></button><span {...stylex.props(styles.divider)}/><button type="button" onClick={() => imageInput.current?.click()} {...stylex.props(styles.imageCapture)}><Icon name="image"/><span>Add an image</span></button></div>
-      <div {...stylex.props(styles.toolbar)}><div {...stylex.props(styles.boardLabel)}>All notes <span {...stylex.props(styles.count)}>{filtered.length}</span></div><span {...stylex.props(styles.sort)}><Icon name="sort" width={15}/>Newest first</span></div>
-      {pinned.length > 0 && <NoteBoard notes={pinned} heading="Pinned" label="Pinned notes" onOpen={note => setEditor({ note })} onPin={pin}/>} 
-      {others.length > 0 && <div {...stylex.props(pinned.length > 0 && styles.sectionAfter)}><NoteBoard notes={others} heading={pinned.length ? 'Other notes' : undefined} label={pinned.length ? 'Other notes' : 'Notes'} onOpen={note => setEditor({ note })} onPin={pin}/></div>}
+      <div {...stylex.props(styles.toolbar)}><div {...stylex.props(styles.boardLabel)}>All notes <span {...stylex.props(styles.count)}>{filtered.length}</span></div><span {...stylex.props(styles.sort)}><Icon name="sort" width={15}/>Drag to reorder</span></div>
+      {pinned.length > 0 && <NoteBoard notes={pinned} heading="Pinned" label="Pinned notes" onOpen={note => setEditor({ note })} onPin={pin} onReorder={reorder}/>}
+      {others.length > 0 && <div {...stylex.props(pinned.length > 0 && styles.sectionAfter)}><NoteBoard notes={others} heading={pinned.length ? 'Other notes' : undefined} label={pinned.length ? 'Other notes' : 'Notes'} onOpen={note => setEditor({ note })} onPin={pin} onReorder={reorder}/></div>}
       {filtered.length === 0 && <section {...stylex.props(styles.empty)}><Icon name="search" width={40}/><h2>Nothing here just yet.</h2><p>{query ? 'Try another search, or make a little note.' : 'Make a little note whenever you’re ready.'}</p>{query && <button type="button" onClick={() => setQuery('')} {...stylex.props(styles.secondary)}>Clear search</button>}</section>}
     </main>
     <nav aria-label="Create a note" {...stylex.props(styles.mobileCapture)}><button type="button" aria-label="Add an image" onClick={() => imageInput.current?.click()} {...stylex.props(styles.mobileButton)}><Icon name="image"/></button><span {...stylex.props(styles.mobileDivider)}/><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.mobileButton)}><Icon name="plus"/>New note</button></nav>

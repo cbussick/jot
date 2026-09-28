@@ -76,6 +76,33 @@ test('pins from the board and keeps pinned controls visible', async ({ page }) =
   await expect(page.getByRole('dialog', { name: 'A little note' })).not.toBeVisible();
 });
 
+test('drags notes into a persistent order and supports keyboard reordering', async ({ page }) => {
+  await page.goto('/');
+  for (const title of ['Order one', 'Order two', 'Order three']) {
+    await page.getByRole('button', { name: 'A thought worth keeping…' }).click();
+    await page.getByRole('textbox', { name: 'Title' }).fill(title);
+    await page.getByRole('button', { name: 'Close note' }).click();
+  }
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  const board = page.getByRole('list', { name: 'Notes' });
+  const titles = async () => (await board.getByRole('button', { name: /^Open note:/ }).allTextContents()).filter(text => text.includes('Order '));
+  const first = page.getByRole('button', { name: 'Move note: Order one. Drag or use arrow keys' });
+  const last = page.getByRole('button', { name: 'Move note: Order three. Drag or use arrow keys' });
+  const start = await first.boundingBox();
+  const end = await last.boundingBox();
+  await page.mouse.move(start!.x + 18, start!.y + 18);
+  await page.mouse.down();
+  await page.mouse.move(end!.x + 18, end!.y + 18, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await page.reload();
+  await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['one', 'three', 'two']);
+  await first.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await titles()).map(text => text.includes('Order one') ? 'one' : text.includes('Order two') ? 'two' : 'three')).toEqual(['three', 'one', 'two']);
+});
+
 test('saves a new text note when closed', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();

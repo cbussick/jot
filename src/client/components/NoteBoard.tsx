@@ -5,23 +5,57 @@ import { imageSource } from '../local-store';
 import { styles } from '../app.stylex';
 import { Icon } from './Icon';
 
-export function NoteBoard({ notes, heading, label, onOpen, onPin }: {
+export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
   notes: LocalNote[]; heading?: string; label: string;
   onOpen: (note: LocalNote) => void; onPin: (note: LocalNote) => void;
+  onReorder: (source: string, target: string) => void;
 }) {
   const board = useRef<HTMLUListElement>(null);
+  const drag = useRef<{ source: string; target?: string; startX: number; startY: number } | null>(null);
+  const [target, setTarget] = useState<string>();
   useMasonry(board, notes);
+  const start = (event: React.PointerEvent, id: string) => {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drag.current = { source: id, startX: event.clientX, startY: event.clientY };
+  };
+  const move = (event: React.PointerEvent) => {
+    const active = drag.current;
+    if (!active) return;
+    if (Math.hypot(event.clientX - active.startX, event.clientY - active.startY) < 6 && !active.target) return;
+    const item = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-item-id]');
+    const id = item && board.current?.contains(item) ? item.dataset.itemId : undefined;
+    active.target = id !== active.source ? id : undefined;
+    setTarget(active.target);
+  };
+  const end = () => {
+    const active = drag.current;
+    drag.current = null; setTarget(undefined);
+    if (active?.target) onReorder(active.source, active.target);
+  };
   return <section {...stylex.props(styles.section)}>
     {heading && <h2 {...stylex.props(styles.sectionHeading)}>{heading}</h2>}
     <ul ref={board} aria-label={label} {...stylex.props(styles.board)}>
-      {notes.map(note => <NoteCard key={note.id} note={note} onOpen={onOpen} onPin={onPin}/>) }
+      {notes.map((note, index) => <NoteCard key={note.id} note={note} onOpen={onOpen} onPin={onPin} dropTarget={target === note.id}
+        onPointerDown={event => start(event, note.id)} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
+        onKeyDown={event => {
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowUp' && event.key !== 'ArrowRight' && event.key !== 'ArrowDown') return;
+          event.preventDefault();
+          const next = notes[index + (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1)];
+          if (next) onReorder(note.id, next.id);
+        }}/>) }
     </ul>
   </section>;
 }
 
-function NoteCard({ note, onOpen, onPin }: { note: LocalNote; onOpen: (note: LocalNote) => void; onPin: (note: LocalNote) => void }) {
+function NoteCard({ note, onOpen, onPin, dropTarget, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onKeyDown }: {
+  note: LocalNote; onOpen: (note: LocalNote) => void; onPin: (note: LocalNote) => void; dropTarget: boolean;
+  onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onPointerUp: () => void; onPointerCancel: () => void; onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
+}) {
   const image = note.images[0];
-  return <li {...stylex.props(styles.noteItem)}>
+  return <li data-item-id={note.id} {...stylex.props(styles.noteItem, dropTarget && styles.dropTarget)}>
     <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} onClick={() => onOpen(note)} {...stylex.props(styles.noteCard, styles[note.color])}>
       {image && <LocalPhoto image={image}/>} 
       {note.images.length > 1 && <span {...stylex.props(styles.imageNumber)}><Icon name="image" width={14}/>{note.images.length}</span>}
@@ -31,6 +65,7 @@ function NoteCard({ note, onOpen, onPin }: { note: LocalNote; onOpen: (note: Loc
         <time dateTime={note.updatedAt} {...stylex.props(styles.noteDate)}>{formatDate(note.updatedAt)}</time>
       </span>
     </button>
+    <button type="button" aria-label={`Move note: ${note.title || note.body || 'Image note'}. Drag or use arrow keys`} title="Drag to reorder · arrow keys to move" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onKeyDown={onKeyDown} {...stylex.props(styles.dragHandle)}>⠿</button>
     <button type="button" data-pin-id={note.id} aria-label={`${note.pinned ? 'Unpin' : 'Pin'} note: ${note.title || note.body || 'Image note'}`} aria-pressed={note.pinned} title={note.pinned ? 'Unpin note' : 'Pin note'} onClick={() => onPin(note)} {...stylex.props(styles.pin, note.pinned ? styles.pinned : styles.pinHiddenDesktop)}><Icon name="pin" width={18}/></button>
   </li>;
 }

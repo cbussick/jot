@@ -46,13 +46,19 @@ export function openDatabase(environment: Environment): AppDatabase {
     );
     CREATE INDEX IF NOT EXISTS images_note ON images(note_id, position);
   `);
+  if (!database.prepare('PRAGMA table_info(notes)').all().some(column => (column as { name: string }).name === 'position')) {
+    database.exec('ALTER TABLE notes ADD COLUMN position INTEGER NOT NULL DEFAULT 0');
+    const old = database.prepare('SELECT id FROM notes ORDER BY updated_at DESC, id ASC').all() as { id: string }[];
+    const update = database.prepare('UPDATE notes SET position = ? WHERE id = ?');
+    database.transaction(() => old.forEach((note, index) => update.run(index, note.id)))();
+  }
   database.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(new Date().toISOString());
   return database;
 }
 
 type NoteRow = {
   id: string; title: string; body: string; color: Note['color']; pinned: number;
-  created_at: string; updated_at: string; version: number;
+  created_at: string; updated_at: string; version: number; position: number;
 };
 type ImageRow = {
   id: string; note_id: string; filename: string; alt: string; mime_type: Note['images'][number]['mimeType'];
@@ -67,7 +73,7 @@ export function readNote(database: AppDatabase, id: string): Note | undefined {
 }
 
 export function readNotes(database: AppDatabase): Note[] {
-  const notes = database.prepare('SELECT * FROM notes ORDER BY updated_at DESC, id ASC').all() as NoteRow[];
+  const notes = database.prepare('SELECT * FROM notes ORDER BY position ASC, updated_at DESC, id ASC').all() as NoteRow[];
   const images = database.prepare('SELECT * FROM images ORDER BY note_id, position').all() as ImageRow[];
   const byNote = new Map<string, ImageRow[]>();
   for (const image of images) byNote.set(image.note_id, [...(byNote.get(image.note_id) ?? []), image]);
@@ -81,6 +87,7 @@ function mapNote(row: NoteRow, images: ImageRow[]): Note {
     body: row.body,
     color: row.color,
     pinned: Boolean(row.pinned),
+    position: row.position,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     version: row.version,

@@ -1,7 +1,7 @@
 import { z, type ZodType } from 'zod';
 import {
   authStatusSchema, credentialsSchema, errorResponseSchema, noteListResponseSchema, noteResponseSchema,
-  okResponseSchema, type NoteWrite,
+  okResponseSchema, reorderNotesSchema, type NoteWrite,
 } from '../shared/contracts';
 
 export class ApiError extends Error {
@@ -29,6 +29,7 @@ export const api = {
   login: (password: string) => request('/api/auth/login', okResponseSchema, jsonRequest(credentialsSchema.parse({ password }))),
   logout: () => request('/api/auth/logout', okResponseSchema, { method: 'POST' }),
   notes: () => request('/api/notes', noteListResponseSchema),
+  reorderNotes: (ids: string[]) => request('/api/notes/order', okResponseSchema, jsonRequest(reorderNotesSchema.parse({ ids }), 'PUT')),
   saveNote: (input: NoteWrite, images: File[]) => {
     const form = new FormData();
     form.set('payload', JSON.stringify(input));

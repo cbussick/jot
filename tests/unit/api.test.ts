@@ -78,6 +78,21 @@ describe('notes API', () => {
     expect((await agent.get('/api/notes')).body.notes).toEqual([]);
   });
 
+  it('reorders notes without changing their edit versions, and keeps that order after edits', async () => {
+    await setup();
+    const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+    for (const [index, id] of ids.entries()) {
+      expect((await agent.put(`/api/notes/${id}`).field('payload', JSON.stringify({ id, title: `Note ${index}`, body: '', color: 'paper', pinned: false, expectedVersion: 0, retainedImageIds: [] }))).status).toBe(201);
+    }
+    expect((await agent.put('/api/notes/order').send({ ids: [ids[0], ids[2], ids[1]] })).status).toBe(200);
+    expect((await agent.get('/api/notes')).body.notes.map((note: { id: string }) => note.id)).toEqual([ids[0], ids[2], ids[1]]);
+    expect((await agent.put('/api/notes/order').send({ ids: [ids[0], ids[0]] })).status).toBe(400);
+    expect((await agent.put('/api/notes/order').send({ ids: [crypto.randomUUID()] })).status).toBe(409);
+    const updated = await agent.put(`/api/notes/${ids[1]}`).field('payload', JSON.stringify({ id: ids[1], title: 'Edited', body: '', color: 'paper', pinned: false, expectedVersion: 1, retainedImageIds: [] }));
+    expect(updated.status).toBe(200);
+    expect((await agent.get('/api/notes')).body.notes.map((note: { id: string }) => note.id)).toEqual([ids[0], ids[2], ids[1]]);
+  });
+
   it('rejects files whose bytes do not match an accepted image format', async () => {
     await setup();
     const id = crypto.randomUUID();

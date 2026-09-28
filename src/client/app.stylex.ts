@@ -41,6 +41,8 @@ export const styles = stylex.create({
   sectionAfter: { marginTop: 20 },
   sectionHeading: { fontSize: 12, fontWeight: 700, color: colors.muted, margin: '0 0 14px' },
   board: { '--columns': 4, display: 'grid', gridTemplateColumns: 'repeat(var(--columns), minmax(0, 1fr))', gridAutoRows: '1px', columnGap: 20, margin: 0, padding: 0, listStyle: 'none', alignItems: 'start', '@media (max-width: 1100px)': { '--columns': 3, columnGap: 16 }, '@media (max-width: 700px)': { '--columns': 2, columnGap: 12 } },
+  dropTarget: { outline: `3px dashed ${colors.green}`, outlineOffset: 3, borderRadius: 14 },
+  dragHandle: { position: 'absolute', left: 5, top: 5, width: 38, height: 38, zIndex: 2, borderRadius: 8, backgroundColor: '#ffffffd9', color: colors.green, cursor: 'grab', touchAction: 'none', fontSize: 24, lineHeight: 1, ':active': { cursor: 'grabbing' }, '@media (hover: hover) and (pointer: fine)': { opacity: 'var(--pin-opacity)' }, ':focus-visible': { opacity: 1 } },
   noteItem: { minWidth: 0, position: 'relative', '@media (hover: hover) and (pointer: fine)': { '--pin-opacity': 0, ':hover': { '--pin-opacity': 1 }, ':focus-within': { '--pin-opacity': 1 } } },
   noteCard: { width: '100%', display: 'block', padding: 0, borderRadius: 14, backgroundColor: 'var(--note-color)', borderWidth: 1, borderStyle: 'solid', borderColor: '#26363013', overflow: 'clip', textAlign: 'left', position: 'relative', ':hover': { boxShadow: '0 4px 16px #2538300c', borderColor: '#26363040' }, '@media (max-width: 700px)': { borderRadius: 11 } },
   paper: { '--note-color': colors.paper }, butter: { '--note-color': colors.butter }, mint: { '--note-color': colors.mint }, lilac: { '--note-color': colors.lilac }, peach: { '--note-color': colors.peach },

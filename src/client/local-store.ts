@@ -7,7 +7,7 @@ export type LocalImage = NoteImage & { blobId?: string };
 export type LocalNote = Omit<Note, 'images' | 'version'> & { images: LocalImage[]; version: number };
 type OutboxEntry = { noteId: string; type: 'save' | 'delete'; expectedVersion: number; mutationId: string };
 const localImageSchema = imageSchema.extend({ url: z.string(), blobId: z.string().optional() });
-const localNoteSchema = noteSchema.omit({ images: true, version: true }).extend({ images: z.array(localImageSchema).max(6), version: z.number().int().nonnegative() });
+const localNoteSchema = noteSchema.omit({ images: true, version: true, position: true }).extend({ images: z.array(localImageSchema).max(6), version: z.number().int().nonnegative(), position: z.number().int().default(0) });
 const outboxSchema = z.object({ noteId: z.uuid(), type: z.enum(['save', 'delete']), expectedVersion: z.number().int().nonnegative(), mutationId: z.uuid() });
 const parseNote = (value: unknown) => localNoteSchema.parse(value) as LocalNote;
 const parseOperation = (value: unknown) => outboxSchema.parse(value) as OutboxEntry;
@@ -27,7 +27,7 @@ const databasePromise = openDB('jot', 1, {
 export async function localNotes(): Promise<LocalNote[]> {
   const database = await databasePromise;
   const notes = z.array(localNoteSchema).parse(await database.getAll('notes')) as LocalNote[];
-  return notes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return notes.sort((a, b) => a.position - b.position || b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
 }
 
 export async function hasLocalData(): Promise<boolean> {
@@ -62,6 +62,7 @@ export async function saveLocalNote(value: {
     id, title: value.title, body: value.body, color: value.color, pinned: value.pinned,
     createdAt: value.createdAt ?? current?.createdAt ?? now,
     updatedAt: now,
+    position: current?.position ?? Math.min(0, ...((await localNotes()).map(note => note.position))) - 1,
     version: value.version ?? current?.version ?? 0,
     images,
   };
@@ -72,6 +73,17 @@ export async function saveLocalNote(value: {
   await transaction.objectStore('meta').put(true, 'initialized');
   await transaction.done;
   return note;
+}
+
+export async function reorderLocalNotes(ids: string[]): Promise<void> {
+  const database = await databasePromise;
+  const current = await localNotes();
+  if (ids.length !== current.length || new Set(ids).size !== ids.length || ids.some(id => !current.some(note => note.id === id))) throw new Error('Invalid note order.');
+  const byId = new Map(current.map(note => [note.id, note]));
+  const transaction = database.transaction(['notes', 'meta'], 'readwrite');
+  for (const [position, id] of ids.entries()) await transaction.objectStore('notes').put({ ...byId.get(id)!, position });
+  await transaction.objectStore('meta').put({ ids, token: crypto.randomUUID() }, 'pendingOrder');
+  await transaction.done;
 }
 
 export async function deleteLocalNote(note: LocalNote): Promise<void> {
@@ -119,7 +131,7 @@ export async function syncNotes(): Promise<{ notes: LocalNote[]; pending: number
           continue;
         }
         await removeBlobs(note);
-        await database.put('notes', result.note);
+        await database.put('notes', { ...result.note, position: note.position });
       }
       const latestOperation = parseOptionalOperation(await database.get('outbox', entry.noteId));
       if (latestOperation?.mutationId === entry.mutationId) await database.delete('outbox', entry.noteId);
@@ -145,12 +157,28 @@ export async function syncNotes(): Promise<{ notes: LocalNote[]; pending: number
     }
   }
 
+  const order = await database.get('meta', 'pendingOrder') as { ids: string[]; token: string } | undefined;
+  if (order) {
+    try {
+      // Include newly created notes, but leave notes added on another device for the server to append.
+      await api.reorderNotes((await localNotes()).map(note => note.id));
+      const latest = await database.get('meta', 'pendingOrder') as typeof order;
+      if (latest?.token === order.token) await database.delete('meta', 'pendingOrder');
+    } catch (error) {
+      if (!(error instanceof ApiError && [0, 401, 409].includes(error.status))) throw error;
+    }
+  }
+
   try {
     const remote = await api.notes();
+    const pendingOrder = await database.get('meta', 'pendingOrder');
     const pending = new Set((z.array(outboxSchema).parse(await database.getAll('outbox')) as OutboxEntry[]).map(item => item.noteId));
     const remoteIds = new Set(remote.notes.map(note => note.id));
     const transaction = database.transaction(['notes', 'meta'], 'readwrite');
-    for (const note of remote.notes) if (!pending.has(note.id)) await transaction.objectStore('notes').put(note);
+    for (const note of remote.notes) if (!pending.has(note.id)) {
+      const local = parseOptionalNote(await transaction.objectStore('notes').get(note.id));
+      await transaction.objectStore('notes').put(pendingOrder && local ? { ...note, position: local.position } : note);
+    }
     for (const local of z.array(localNoteSchema).parse(await transaction.objectStore('notes').getAll()) as LocalNote[]) {
       if (local.version > 0 && !pending.has(local.id) && !remoteIds.has(local.id)) await transaction.objectStore('notes').delete(local.id);
     }
@@ -159,7 +187,7 @@ export async function syncNotes(): Promise<{ notes: LocalNote[]; pending: number
   } catch (error) {
     if (!(error instanceof ApiError && (error.status === 0 || error.status === 401))) throw error;
   }
-  return { notes: await localNotes(), pending: (await database.count('outbox')), conflict };
+  return { notes: await localNotes(), pending: (await database.count('outbox')) + Number(Boolean(await database.get('meta', 'pendingOrder'))), conflict };
 }
 
 export async function imageSource(image: LocalImage): Promise<string> {

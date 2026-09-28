@@ -10,7 +10,7 @@ import multer from 'multer';
 import sharp from 'sharp';
 import { ZodError } from 'zod';
 import {
-  authStatusSchema, credentialsSchema, deleteNoteSchema, noteIdParamsSchema, noteWriteSchema,
+  authStatusSchema, credentialsSchema, deleteNoteSchema, noteIdParamsSchema, noteWriteSchema, reorderNotesSchema,
   type Environment,
 } from '../shared/contracts.js';
 import { createOwner, createSession, destroySession, hasOwner, isAuthenticated, requireAuthentication, verifyOwner } from './auth.js';
@@ -87,6 +87,16 @@ export function createApp(database: AppDatabase, environment: Environment) {
 
   app.use('/api', requireAuthentication(database));
   app.get('/api/notes', (_request, response) => response.json({ notes: readNotes(database) }));
+  app.put('/api/notes/order', (request, response) => {
+    const { ids } = reorderNotesSchema.parse(request.body);
+    const existing = readNotes(database).map(note => note.id);
+    const known = new Set(existing);
+    if (ids.some(id => !known.has(id))) return response.status(409).json({ error: 'The notes changed. Try reordering again.' });
+    const ordered = [...ids, ...existing.filter(id => !ids.includes(id))];
+    const update = database.prepare('UPDATE notes SET position = ? WHERE id = ?');
+    database.transaction(() => ordered.forEach((id, index) => update.run(index, id)))();
+    response.json({ ok: true });
+  });
   app.get('/api/images/:id', (request, response) => {
     const { id } = noteIdParamsSchema.parse(request.params);
     const image = database.prepare('SELECT filename, mime_type FROM images WHERE id = ?').get(id) as { filename: string; mime_type: string } | undefined;
@@ -141,8 +151,9 @@ export function createApp(database: AppDatabase, environment: Environment) {
           database.prepare('UPDATE notes SET title=?, body=?, color=?, pinned=?, updated_at=?, version=version+1 WHERE id=?')
             .run(input.title, input.body, input.color, Number(input.pinned), now, id);
         } else {
-          database.prepare('INSERT INTO notes (id,title,body,color,pinned,created_at,updated_at,version) VALUES (?,?,?,?,?,?,?,1)')
-            .run(id, input.title, input.body, input.color, Number(input.pinned), now, now);
+          const first = database.prepare('SELECT MIN(position) AS position FROM notes').get() as { position: number | null };
+          database.prepare('INSERT INTO notes (id,title,body,color,pinned,created_at,updated_at,version,position) VALUES (?,?,?,?,?,?,?,1,?)')
+            .run(id, input.title, input.body, input.color, Number(input.pinned), now, now, (first.position ?? 0) - 1);
         }
         const oldImages = database.prepare('SELECT id, filename FROM images WHERE note_id=?').all(id) as { id: string; filename: string }[];
         const removed = oldImages.filter(image => !retained.has(image.id));

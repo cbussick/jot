@@ -105,6 +105,8 @@ This requires a browser that supports Web Share Target (such as Chrome on Androi
 
 ## Sync behavior
 
+Drag a note by its top-left handle to reorder it within Pinned or Other notes. The handle also supports arrow keys. Order is saved locally first and synced across devices; moving a note does not change its edit date. Newly created notes appear first. When searching, only visible notes can be used as drop targets.
+
 Edits are committed to IndexedDB first and sent to the server immediately when possible. The header distinguishes **Saved on device**, **Syncing…**, **Synced**, and failure/offline states.
 
 Mobile operating systems can suspend web apps after they are backgrounded. An edit made offline may therefore remain only on its original device until jot. is opened again with connectivity. Incoming shares are temporary on-device drafts (not notes) until saved, and expire after 24 hours.
