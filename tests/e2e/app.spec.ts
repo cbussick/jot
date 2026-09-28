@@ -68,6 +68,11 @@ test('note colors stay in a palette popover that can be dismissed', async ({ pag
   await editor.getByRole('radio', { name: 'Peach' }).click();
   await expect(editor).toHaveCSS('background-color', 'rgb(246, 223, 210)');
   await expect(editor.getByRole('radio')).toHaveCount(0);
+  await palette.click();
+  const paper = editor.getByRole('radio', { name: 'Paper' }).locator('..');
+  await expect(paper).toHaveCSS('border-color', 'rgb(102, 120, 107)');
+  await expect(paper).toHaveCSS('border-width', '2px');
+  await palette.click();
   await editor.getByRole('textbox', { name: 'Title' }).fill('Palette note');
   await editor.getByRole('button', { name: 'Close note' }).click();
   const card = page.getByRole('button', { name: 'Open note: Palette note' });

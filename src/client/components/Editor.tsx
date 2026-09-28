@@ -159,7 +159,7 @@ function ColorPicker({ color, onChange }: { color: NoteColor; onChange: (color: 
   }} {...stylex.props(styles.colorPickerAnchor)}>
     <button ref={trigger} type="button" aria-label="Note color" aria-expanded={open} aria-controls="note-color-choices" onClick={() => setOpen(value => !value)} {...stylex.props(styles.iconButton)}><Icon name="palette"/></button>
     {open && <div id="note-color-choices" {...stylex.props(styles.colorPopover)}>
-      <fieldset {...stylex.props(styles.colorPicker)}><legend className="sr-only">Note color</legend>{colors.map(option => <label key={option} {...stylex.props(styles.swatch, styles[option], option === color && styles.swatchSelected)}><input type="radio" name="color" value={option} checked={option === color} onClick={() => { if (option === color) { setOpen(false); trigger.current?.focus(); } }} onChange={() => { onChange(option); setOpen(false); trigger.current?.focus(); }} aria-label={option[0].toUpperCase() + option.slice(1)} {...stylex.props(styles.radio)}/></label>)}</fieldset>
+      <fieldset {...stylex.props(styles.colorPicker)}><legend className="sr-only">Note color</legend>{colors.map(option => <label key={option} {...stylex.props(styles.swatch, styles[option], option === 'paper' && styles.paperSwatch, option === color && styles.swatchSelected)}><input type="radio" name="color" value={option} checked={option === color} onClick={() => { if (option === color) { setOpen(false); trigger.current?.focus(); } }} onChange={() => { onChange(option); setOpen(false); trigger.current?.focus(); }} aria-label={option[0].toUpperCase() + option.slice(1)} {...stylex.props(styles.radio)}/></label>)}</fieldset>
     </div>}
   </div>;
 }
