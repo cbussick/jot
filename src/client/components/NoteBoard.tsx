@@ -158,7 +158,7 @@ function NoteCard({ note, onCardClick, onPin, onContextMenu, dropTarget, onPoint
 }) {
   const image = note.images[0];
   return <li data-item-id={note.id} {...stylex.props(styles.noteItem, dropTarget && styles.dropTarget)}>
-    <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} title="Drag to reorder · arrow keys to move" onClick={onCardClick} onPointerDown={onPointerDown} onContextMenu={event => { event.preventDefault(); onContextMenu(note, event); }} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>
+    <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} title="Drag to reorder · arrow keys to move" onClick={onCardClick} onPointerDown={onPointerDown} onContextMenu={event => { event.preventDefault(); if (navigator.maxTouchPoints === 0) onContextMenu(note, event); }} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>
       {note.images.length === 1 && <LocalPhoto image={image}/>}
       {note.images.length > 1 && <ImageMosaic images={note.images.map(item => <LocalPhoto key={item.id} image={item} className={stylex.props(styles.mosaicPhoto).className}/>)}/>}
       <span {...stylex.props(styles.noteContent, image && styles.imageContent)}>
