@@ -55,7 +55,6 @@ export const styles = stylex.create({
   photo: { display: 'block', width: '100%', height: 'auto', maxHeight: 420, objectFit: 'contain' },
   imageMosaic: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateRows: 'repeat(2, minmax(0, 1fr))', gap: 4, width: '100%', aspectRatio: '4 / 3', overflow: 'hidden', '@media (max-width: 700px)': { gap: 3 } },
   mosaicTwo: { gridTemplateRows: '1fr' },
-  mosaicThree: { gridTemplateRows: 'repeat(2, minmax(0, 1fr))' },
   mosaicWide: { gridColumn: '1 / -1' },
   mosaicTile: { position: 'relative', display: 'block', minWidth: 0, minHeight: 0, overflow: 'hidden' },
   mosaicPhoto: { display: 'block', width: '100%', height: '100%', objectFit: 'cover' },

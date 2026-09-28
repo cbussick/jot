@@ -7,7 +7,7 @@ export function ImageMosaic({ images, editor = false, onOpen, onRemove }: {
   images: React.ReactNode[]; editor?: boolean;
   onOpen?: (index: number) => void; onRemove?: (index: number) => void;
 }) {
-  return <span {...stylex.props(styles.imageMosaic, editor && styles.editorMosaic, images.length === 2 && styles.mosaicTwo, images.length === 3 && styles.mosaicThree)}>
+  return <span {...stylex.props(styles.imageMosaic, editor && styles.editorMosaic, images.length === 2 && styles.mosaicTwo)}>
     {images.slice(0, 4).map((image, index) => <span key={index} {...stylex.props(styles.mosaicTile, images.length === 3 && index === 2 && styles.mosaicWide)}>
       {onOpen ? <button type="button" aria-label={`View image ${index + 1}`} onClick={() => onOpen(index)} {...stylex.props(styles.mosaicOpen)}>{image}</button> : image}
       {onRemove && <button type="button" aria-label={`Remove image ${index + 1}`} onClick={() => onRemove(index)} {...stylex.props(styles.imageRemove)}><Icon name="trash" width={18}/></button>}
