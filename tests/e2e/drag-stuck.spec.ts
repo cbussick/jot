@@ -27,8 +27,7 @@ test('release after a reordered card loses capture clears the floating preview',
   await source.evaluate(button => {
     if (button.hasPointerCapture(1)) button.releasePointerCapture(1);
   });
-  // Release in the gap at the edge of the proposed slot, not on another card.
-  await page.mouse.move(from.x + from.width + 8, from.y + 20);
+  // Release at the current position: moving through other cards can change the proposed slot.
   await page.mouse.up();
   await expect(floating).toHaveCount(0);
   await expect.poll(order).toEqual([second, first, third]);
