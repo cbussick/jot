@@ -8,26 +8,25 @@ export default defineConfig({
     stylex.vite({ useCSSLayers: true }),
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src/client',
+      filename: 'sw.ts',
       registerType: 'prompt',
       injectRegister: false,
       includeAssets: ['assets/favicon.svg', 'assets/*.ttf', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'jot.', short_name: 'jot.', description: 'A private place for little notes.',
         start_url: '/', scope: '/', display: 'standalone',
+        share_target: {
+          action: '/share-target', method: 'POST', enctype: 'multipart/form-data',
+          params: { files: [{ name: 'images', accept: ['image/jpeg', '.jpg', '.jpeg', 'image/png', '.png', 'image/webp', '.webp', 'image/gif', '.gif'] }] },
+        },
         background_color: '#f7f8fa', theme_color: '#f7f8fa',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-      },
-      workbox: {
-        navigateFallback: '/index.html',
-        runtimeCaching: [{
-          urlPattern: ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/api/images/'),
-          handler: 'CacheFirst',
-          options: { cacheName: 'jot-images', expiration: { maxEntries: 200, maxAgeSeconds: 30 * 24 * 60 * 60 }, cacheableResponse: { statuses: [200] } },
-        }],
       },
     }),
   ],

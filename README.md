@@ -21,6 +21,7 @@ A small, private, self-hosted notes app for text and images. It is designed for 
 - Offline note creation and editing; queued changes sync while jot. is open and connected
 - Conflict protection that preserves the local edit as a conflict copy
 - Installable PWA on supported browsers and operating systems
+- Android share-sheet target for screenshots and other JPG, PNG, WebP, or GIF images
 - One owner password with revocable, server-side sessions
 
 The app deliberately has no labels, checklists, archive, reminders, trash, sharing, or multi-user administration.
@@ -96,11 +97,17 @@ docker compose up -d --build
 
 The PWA downloads frontend updates in the background. It does not force a reload while a note is being edited.
 
+## Share screenshots from Android
+
+On an Android phone or tablet, install jot. from Chrome while connected to its HTTPS URL. In your screenshots or photos app, tap **Share → jot.** The image opens in a new, unsaved note: add text or more images, then tap **Save note**. Closing the draft discards the share. Shares received offline can be saved on the device and will sync when jot. is open and connected again. If jot. was installed before this feature was deployed, you may need to reinstall it for Android to register the new share target.
+
+This requires a browser that supports Web Share Target (such as Chrome on Android). iOS/iPadOS PWAs cannot currently appear in the system share sheet; use **Add an image** in jot. instead.
+
 ## Sync behavior
 
 Edits are committed to IndexedDB first and sent to the server immediately when possible. The header distinguishes **Saved on device**, **Syncing…**, **Synced**, and failure/offline states.
 
-Mobile operating systems can suspend web apps after they are backgrounded. An edit made offline may therefore remain only on its original device until jot. is opened again with connectivity.
+Mobile operating systems can suspend web apps after they are backgrounded. An edit made offline may therefore remain only on its original device until jot. is opened again with connectivity. Incoming shares are temporary on-device drafts (not notes) until saved, and expire after 24 hours.
 
 ## Security notes
 

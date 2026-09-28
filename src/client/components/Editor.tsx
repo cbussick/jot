@@ -63,7 +63,7 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
     }
   };
   return <>
-    <dialog ref={dialog} aria-labelledby="editor-heading" onCancel={event => { event.preventDefault(); requestClose(); }} {...stylex.props(styles.dialog, styles.editor, styles[color])}>
+    <dialog ref={dialog} aria-labelledby="editor-heading" onCancel={event => { if (event.target !== event.currentTarget) return; event.preventDefault(); requestClose(); }} {...stylex.props(styles.dialog, styles.editor, styles[color])}>
       <form onSubmit={submit} {...stylex.props(styles.editorForm)}>
         <header {...stylex.props(styles.editorHeader)}><span id="editor-heading">{note ? 'A little note' : 'Something worth keeping'}</span><div {...stylex.props(styles.headerActions)}>
           <button type="button" aria-label={pinned ? 'Unpin note' : 'Pin note'} aria-pressed={pinned} onClick={() => setPinned(value => !value)} {...stylex.props(styles.pinText, pinned && styles.pinned)}><Icon name="pin" width={18}/><span>{pinned ? 'Pinned' : 'Pin'}</span></button>

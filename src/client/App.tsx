@@ -7,6 +7,7 @@ import { Auth, Brand } from './components/Auth';
 import { Editor, type EditorValue } from './components/Editor';
 import { Icon } from './components/Icon';
 import { NoteBoard } from './components/NoteBoard';
+import { clearShares, discardShare, getShare } from './incoming-share';
 import { clearLocalData, deleteLocalNote, hasLocalData, localNotes, saveLocalNote, syncNotes, type LocalNote } from './local-store';
 
 type SyncState = 'connecting' | 'syncing' | 'synced' | 'local' | 'offline' | 'error';
@@ -27,7 +28,7 @@ export function App() {
 function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout: () => void }) {
   const [notes, setNotes] = useState<LocalNote[]>([]);
   const [query, setQuery] = useState('');
-  const [editor, setEditor] = useState<{ note?: LocalNote; files?: File[] }>();
+  const [editor, setEditor] = useState<{ note?: LocalNote; files?: File[]; shareId?: string }>();
   const [syncState, setSyncState] = useState<SyncState>(offlineEntry ? 'offline' : 'connecting');
   const [pending, setPending] = useState(0);
   const [toast, setToast] = useState('');
@@ -62,6 +63,27 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     void navigator.storage?.persist?.();
     return () => { clearInterval(interval); removeEventListener('online', online); document.removeEventListener('visibilitychange', visible); };
   }, [synchronize]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const id = params.get('share');
+    const shareError = params.get('shareError');
+    if (shareError) {
+      notify(shareError === 'invalid' ? 'Choose up to 6 JPG, PNG, WebP or GIF images under 10 MB.' : 'Could not receive the shared image. Try again.');
+      history.replaceState(null, '', '/');
+    }
+    if (!id) return;
+    let active = true;
+    void getShare(id).then(files => {
+      if (!active) return;
+      if (files?.length) setEditor({ files, shareId: id });
+      else notify('The shared image is no longer available. Please share it again.');
+      if (!files?.length) history.replaceState(null, '', '/');
+    }).catch(() => {
+      if (active) notify('Could not open the shared image. Please share it again.');
+    });
+    return () => { active = false; };
+  }, [notify]);
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -100,9 +122,17 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     if (!files?.length) return;
     setEditor({ files: [...files] });
   };
+  const closeEditor = async () => {
+    if (editor?.shareId) {
+      try { await discardShare(editor.shareId); }
+      catch { notify('Could not remove the temporary shared image from this device.'); }
+      history.replaceState(null, '', '/');
+    }
+    setEditor(undefined);
+  };
   const logout = async () => {
     if (pending) return notify('Wait for your notes to finish syncing before signing out.');
-    await api.logout(); await clearLocalData(); onLogout();
+    await api.logout(); await clearLocalData(); await clearShares(); onLogout();
   };
 
   const status = syncStatus(syncState, pending);
@@ -121,7 +151,7 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     </main>
     <nav aria-label="Create a note" {...stylex.props(styles.mobileCapture)}><button type="button" aria-label="Add an image" onClick={() => imageInput.current?.click()} {...stylex.props(styles.mobileButton)}><Icon name="image"/></button><span {...stylex.props(styles.mobileDivider)}/><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.mobileButton)}><Icon name="plus"/>New note</button></nav>
     <input ref={imageInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden onChange={event => { chooseImages(event.target.files); event.target.value = ''; }}/>
-    {editor && <Editor note={editor.note} initialImages={editor.files} onSave={save} onDelete={remove} onClose={() => setEditor(undefined)}/>} 
+    {editor && <Editor note={editor.note} initialImages={editor.files} onSave={save} onDelete={remove} onClose={closeEditor}/>}
     <dialog ref={syncDialog} aria-labelledby="sync-title" {...stylex.props(styles.dialog, styles.smallDialog)}><Icon name={status.icon} width={32}/><h2 id="sync-title" {...stylex.props(styles.dialogTitle)}>{status.label}</h2><p {...stylex.props(styles.dialogCopy)}>{status.copy}</p><div {...stylex.props(styles.dialogActions)}><button type="button" onClick={logout} {...stylex.props(styles.secondary)}>Sign out</button><button type="button" onClick={() => { syncDialog.current?.close(); void synchronize(); }} {...stylex.props(styles.primary)}>Sync now</button></div></dialog>
     {toast && <div role="status" {...stylex.props(styles.toast)}>{toast}</div>}
   </>;

@@ -5,6 +5,7 @@ test.describe.configure({ mode: 'serial' });
 
 test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
   await page.keyboard.press('n');
   await page.getByRole('textbox', { name: 'Title' }).fill('Keep this close');
   await page.getByRole('textbox', { name: 'Note', exact: true }).fill('A private thought.');
@@ -46,6 +47,91 @@ test('accepts an image and keeps the editor textarea fixed', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
 });
 
+test('receives an Android share as an unsaved draft, supports editing, and discards on cancel', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+
+  const share = async () => {
+    const chooser = await page.evaluateHandle(() => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      document.body.append(input);
+      return input;
+    });
+    await chooser.asElement()!.setInputFiles('tests/fixtures/image.jpg');
+    return page.evaluate(async () => {
+      const input = document.querySelector('body > input[type=file]') as HTMLInputElement;
+      const form = new FormData();
+      form.append('images', input.files![0]);
+      input.remove();
+      const response = await fetch('/share-target', { method: 'POST', body: form });
+      return response.url;
+    });
+  };
+
+  const first = await share();
+  expect(first).toContain('share=');
+  await page.goto(first);
+  await expect(page.getByRole('dialog', { name: 'Something worth keeping' }).getByRole('img')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Close note' }).click();
+  const discard = page.getByRole('dialog', { name: 'Leave without saving?' });
+  if (await discard.isVisible()) await discard.getByRole('button', { name: 'Discard changes' }).click();
+  await expect(page.getByRole('dialog', { name: 'Something worth keeping' })).not.toBeVisible();
+  expect(new URL(page.url()).search).toBe('');
+  await page.goto(first);
+  await expect(page.getByRole('status')).toContainText('no longer available');
+
+  const second = await share();
+  await page.goto(second);
+  await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Shared screenshot note');
+  await page.getByRole('button', { name: 'Attach an image' }).click();
+  await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
+  await expect(page.getByRole('dialog', { name: 'Something worth keeping' }).getByRole('img')).toHaveCount(2);
+  await expect(page.getByRole('dialog', { name: 'Leave without saving?' })).not.toBeVisible();
+  await page.getByRole('button', { name: 'Save note' }).click();
+  await expect(page.getByRole('button', { name: 'Open note: Shared screenshot note' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await page.goto(second);
+  await expect(page.getByRole('status')).toContainText('no longer available');
+});
+
+test('can receive and save a shared screenshot offline', async ({ page, context }) => {
+  await page.goto('/');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+  const picker = await page.evaluateHandle(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    document.body.append(input);
+    return input;
+  });
+  await picker.asElement()!.setInputFiles('tests/fixtures/image.jpg');
+  await context.setOffline(true);
+  await page.evaluate(() => {
+    const picker = document.querySelector('body > input[type=file]') as HTMLInputElement;
+    const form = document.createElement('form');
+    form.action = '/share-target';
+    form.method = 'POST';
+    form.enctype = 'multipart/form-data';
+    picker.name = 'images';
+    form.append(picker);
+    document.body.append(form);
+    form.submit();
+  });
+  await expect(page).toHaveURL(/share=/);
+  await expect(page.getByRole('dialog', { name: 'Something worth keeping' }).getByRole('img')).toHaveCount(1);
+  await page.getByRole('textbox', { name: 'Title' }).fill('Shared while offline');
+  await page.getByRole('button', { name: 'Save note' }).click();
+  await expect(page.getByRole('button', { name: 'Open note: Shared while offline' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Saved on device' })).toBeVisible();
+  await context.setOffline(false);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 15_000 });
+});
+
 test('works offline after the first online visit and syncs on reconnect', async ({ page, context }) => {
   await page.goto('/');
   await page.evaluate(() => navigator.serviceWorker.ready);
@@ -53,6 +139,7 @@ test('works offline after the first online visit and syncs on reconnect', async 
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await context.setOffline(true);
   await page.reload();
+  await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
   await page.keyboard.press('n');
   await page.getByRole('textbox', { name: 'Title' }).fill('Written offline');
   await page.getByRole('button', { name: 'Save note' }).click();
