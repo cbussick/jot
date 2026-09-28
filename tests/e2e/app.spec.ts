@@ -122,6 +122,23 @@ test('keeps the header and floating create action visible even when the top capt
   await expect(page.getByRole('dialog', { name: 'Add note' })).toBeVisible();
 });
 
+test('uses two note columns on phones and three on tablets', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.goto('/');
+  for (let index = 0; index < 3; index++) {
+    await page.getByRole('button', { name: 'New note' }).click();
+    await page.getByRole('textbox', { name: 'Title' }).fill(`Layout note ${index}`);
+    await page.getByRole('button', { name: 'Close note' }).click();
+  }
+  const board = page.getByRole('list', { name: 'Notes', exact: true });
+  await expect(board.locator('li')).toHaveCount(3);
+  await expect(board).toHaveCSS('--columns', '2');
+  await expect(board).toHaveCSS('column-gap', '12px');
+  await page.setViewportSize({ width: 800, height: 700 });
+  await expect(board).toHaveCSS('--columns', '3');
+  await expect(board).toHaveCSS('column-gap', '16px');
+});
+
 test('keeps the mobile create action visible while the header sticks', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 700 });
   await page.goto('/');

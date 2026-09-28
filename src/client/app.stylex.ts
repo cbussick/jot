@@ -41,7 +41,7 @@ export const styles = stylex.create({
   section: { marginTop: 0 },
   sectionAfter: { marginTop: 20 },
   sectionHeading: { fontSize: 12, fontWeight: 700, color: colors.muted, margin: '0 0 14px' },
-  board: { '--columns': 4, display: 'grid', gridTemplateColumns: 'repeat(var(--columns), minmax(0, 1fr))', gridAutoRows: '1px', columnGap: 20, margin: 0, padding: 0, listStyle: 'none', alignItems: 'start', '@media (max-width: 1100px)': { '--columns': 3, columnGap: 16 }, '@media (max-width: 700px)': { '--columns': 2, columnGap: 12 } },
+  board: { '--columns': 4, display: 'grid', gridTemplateColumns: 'repeat(var(--columns), minmax(0, 1fr))', gridAutoRows: '1px', columnGap: 20, margin: 0, padding: 0, listStyle: 'none', alignItems: 'start', '@media (min-width: 701px) and (max-width: 1100px)': { '--columns': 3, columnGap: 16 }, '@media (max-width: 700px)': { '--columns': 2, columnGap: 12 } },
   dropTarget: { outline: `2px dashed ${colors.green}`, outlineOffset: 3, borderRadius: 14 },
   dragPlaceholder: { opacity: 0.18 },
   noteItem: { minWidth: 0, position: 'relative', '@media (hover: hover) and (pointer: fine)': { '--pin-opacity': 0, ':hover': { '--pin-opacity': 1 }, ':focus-within': { '--pin-opacity': 1 } } },
