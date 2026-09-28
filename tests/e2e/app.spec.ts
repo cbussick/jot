@@ -73,27 +73,19 @@ test('shows the simplified copy and gives sync its own dismissible dialog', asyn
   await page.getByRole('dialog', { name: 'Delete this note?' }).getByRole('button', { name: 'Delete note' }).click();
 });
 
-test('keeps the header in view and switches to a floating create action when capture is covered', async ({ page }) => {
+test('keeps the header and floating create action visible even when the top capture is in view', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 700 });
   await page.goto('/');
   await page.locator('#main').evaluate(main => { main.style.minHeight = '200vh'; });
   const header = page.locator('#root > header');
   const floating = page.getByRole('navigation', { name: 'Create a note' });
-  const capture = page.getByRole('button', { name: 'Add a note' });
-  await expect(floating).toBeHidden();
-  // Use the capture's actual edge, rather than a hard-coded scroll distance.
-  const scrollDistance = await capture.evaluate(button => button.parentElement!.getBoundingClientRect().bottom - document.querySelector('#root > header')!.getBoundingClientRect().bottom);
-  await page.evaluate(distance => window.scrollTo(0, distance - 2), scrollDistance);
-  await expect(floating).toBeHidden();
-  await page.evaluate(distance => window.scrollTo(0, distance + 2), scrollDistance);
+  await expect(page.getByRole('button', { name: 'Add a note' })).toBeVisible();
+  await expect(floating).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 300));
   await expect(floating).toBeVisible();
   expect(await header.evaluate(element => element.getBoundingClientRect().top)).toBe(0);
   await floating.getByRole('button', { name: 'New note' }).click();
   await expect(page.getByRole('dialog', { name: 'Add note' })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await expect(floating).toBeHidden();
-  await expect(capture).toBeVisible();
 });
 
 test('keeps the mobile create action visible while the header sticks', async ({ page }) => {
@@ -580,25 +572,27 @@ for (const width of [390, 834, 1440]) {
   });
 }
 
-test('mobile create controls float while leaving the last notes clear at the bottom', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
-  await page.getByRole('button', { name: 'New note' }).click();
-  await page.getByRole('textbox', { name: 'Title' }).fill('Tall mobile note');
-  await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Long thought. '.repeat(180));
-  await page.getByRole('button', { name: 'Close note' }).click();
-  await expect(page.getByRole('button', { name: 'Open note: Tall mobile note' })).toBeVisible();
-  const nav = page.getByRole('navigation', { name: 'Create a note' });
-  await expect(nav).toHaveCSS('position', 'fixed');
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  const clearance = await page.evaluate(() => {
-    const navTop = document.querySelector<HTMLElement>('nav[aria-label="Create a note"]')!.getBoundingClientRect().top;
-    const lastCardBottom = Math.max(...[...document.querySelectorAll<HTMLElement>('[data-note-id]')].map(card => card.getBoundingClientRect().bottom));
-    return { gap: navTop - lastCardBottom, scrolled: scrollY > 0 };
+for (const width of [390, 1280]) {
+  test(`create controls leave the last notes clear at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/');
+    await page.getByRole('button', { name: width === 390 ? 'New note' : 'Add a note' }).click();
+    await page.getByRole('textbox', { name: 'Title' }).fill(`Tall note ${width}`);
+    await page.getByRole('textbox', { name: 'Note', exact: true }).fill('Long thought. '.repeat(180));
+    await page.getByRole('button', { name: 'Close note' }).click();
+    await expect(page.getByRole('button', { name: `Open note: Tall note ${width}`, exact: true })).toBeVisible();
+    const nav = page.getByRole('navigation', { name: 'Create a note' });
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect(nav).toHaveCSS('position', 'fixed');
+    const clearance = await page.evaluate(() => {
+      const navTop = document.querySelector<HTMLElement>('nav[aria-label="Create a note"]')!.getBoundingClientRect().top;
+      const lastCardBottom = Math.max(...[...document.querySelectorAll<HTMLElement>('[data-note-id]')].map(card => card.getBoundingClientRect().bottom));
+      return { gap: navTop - lastCardBottom, scrolled: scrollY > 0 };
+    });
+    expect(clearance.scrolled).toBe(true);
+    expect(clearance.gap).toBeGreaterThanOrEqual(12);
   });
-  expect(clearance.scrolled).toBe(true);
-  expect(clearance.gap).toBeGreaterThanOrEqual(12);
-});
+}
 
 test('serves the service worker and page shell without browser HTTP caching', async ({ request }) => {
   for (const path of ['/sw.js', '/', '/share-target']) {
