@@ -34,10 +34,7 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
   const [syncState, setSyncState] = useState<SyncState>(offlineEntry ? 'offline' : 'connecting');
   const [pending, setPending] = useState(0);
   const [toast, setToast] = useState('');
-  const [showFloatingCapture, setShowFloatingCapture] = useState(false);
   const syncing = useRef(false);
-  const header = useRef<HTMLElement>(null);
-  const capture = useRef<HTMLDivElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const syncDialog = useRef<HTMLDialogElement>(null);
   const deleteDialog = useRef<HTMLDialogElement>(null);
@@ -111,18 +108,6 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     return () => document.removeEventListener('keydown', keydown);
   }, []);
 
-  useEffect(() => {
-    const update = () => {
-      if (header.current && capture.current) {
-        setShowFloatingCapture(capture.current.getBoundingClientRect().bottom <= header.current.getBoundingClientRect().bottom);
-      }
-    };
-    update();
-    addEventListener('scroll', update, { passive: true });
-    addEventListener('resize', update);
-    return () => { removeEventListener('scroll', update); removeEventListener('resize', update); };
-  }, []);
-
   const filtered = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return notes.filter(note => [note.title, note.body, ...note.images.map(image => image.alt)].join(' ').toLocaleLowerCase().includes(normalized));
@@ -182,13 +167,13 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
   const status = syncStatus(syncState, pending);
   return <>
     <a href="#main" {...stylex.props(styles.skipLink)}>Skip to notes</a>
-    <header ref={header} {...stylex.props(styles.header)}><a href="/" aria-label="jot home" {...stylex.props(styles.brand)}><Brand/></a>
+    <header {...stylex.props(styles.header)}><a href="/" aria-label="jot home" {...stylex.props(styles.brand)}><Brand/></a>
       <search {...stylex.props(styles.search)}><Icon name="search"/><input id="search" type="search" aria-label="Search notes" placeholder="Search your notes" value={query} onChange={event => setQuery(event.target.value)} {...stylex.props(styles.searchInput)}/><kbd {...stylex.props(styles.searchKey)}>/</kbd></search>
       <div {...stylex.props(styles.accountActions)}><button type="button" aria-label={status.label} onClick={() => syncDialog.current?.showModal()} {...stylex.props(styles.syncButton)}><Icon name={status.icon}/><span>{status.label}</span></button><button type="button" onClick={() => void logout()} {...stylex.props(styles.signOutButton)}>Sign out</button></div>
     </header>
     <main id="main" {...stylex.props(styles.workspace)}><section {...stylex.props(styles.pageHeading)}><h1 {...stylex.props(styles.h1)}>Your notes</h1></section>
-      <div ref={capture} {...stylex.props(styles.capture)}><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.captureText)}><Icon name="pen" {...stylex.props(styles.capturePencil)}/><span>Add a note</span></button><span {...stylex.props(styles.divider)}/><button type="button" onClick={() => imageInput.current?.click()} {...stylex.props(styles.imageCapture)}><Icon name="image"/><span>Add an image</span></button></div>
-      <nav aria-label="Create a note" {...stylex.props(styles.mobileCapture, showFloatingCapture && styles.desktopFloatingCapture)}><button type="button" aria-label="Add an image" onClick={() => imageInput.current?.click()} {...stylex.props(styles.mobileButton)}><Icon name="image"/></button><span {...stylex.props(styles.mobileDivider)}/><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.mobileButton)}><Icon name="plus"/>New note</button></nav>
+      <div {...stylex.props(styles.capture)}><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.captureText)}><Icon name="pen" {...stylex.props(styles.capturePencil)}/><span>Add a note</span></button><span {...stylex.props(styles.divider)}/><button type="button" onClick={() => imageInput.current?.click()} {...stylex.props(styles.imageCapture)}><Icon name="image"/><span>Add an image</span></button></div>
+      <nav aria-label="Create a note" {...stylex.props(styles.floatingCapture)}><button type="button" aria-label="Add an image" onClick={() => imageInput.current?.click()} {...stylex.props(styles.mobileButton)}><Icon name="image"/></button><span {...stylex.props(styles.mobileDivider)}/><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.mobileButton)}><Icon name="plus"/>New note</button></nav>
       <div {...stylex.props(styles.toolbar)}><div {...stylex.props(styles.boardLabel)}>All notes <span {...stylex.props(styles.count)}>{filtered.length}</span></div></div>
       {pinned.length > 0 && <NoteBoard notes={pinned} heading="Pinned" label="Pinned notes" onOpen={note => setEditor({ note })} onPin={pin} onContextMenu={showMenu} onReorder={reorder}/>}
       {others.length > 0 && <div {...stylex.props(pinned.length > 0 && styles.sectionAfter)}><NoteBoard notes={others} heading={pinned.length ? 'Other notes' : undefined} label={pinned.length ? 'Other notes' : 'Notes'} onOpen={note => setEditor({ note })} onPin={pin} onContextMenu={showMenu} onReorder={reorder}/></div>}
