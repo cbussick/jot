@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { styles } from './app.stylex';
 import { Auth, Brand } from './components/Auth';
-import { Editor, type EditorValue } from './components/Editor';
+import { ConfirmDialog, Editor, type EditorValue } from './components/Editor';
 import { Icon } from './components/Icon';
 import { NoteBoard } from './components/NoteBoard';
+import { NoteContextMenu, type MenuTarget } from './components/NoteContextMenu';
 import { clearShares, discardShare, getShare } from './incoming-share';
 import { clearLocalData, deleteLocalNote, hasLocalData, localNotes, reorderLocalNotes, saveLocalNote, syncNotes, type LocalNote } from './local-store';
 
@@ -29,12 +30,26 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
   const [notes, setNotes] = useState<LocalNote[]>([]);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ note?: LocalNote; files?: File[]; shareId?: string }>();
+  const [menu, setMenu] = useState<MenuTarget>();
   const [syncState, setSyncState] = useState<SyncState>(offlineEntry ? 'offline' : 'connecting');
   const [pending, setPending] = useState(0);
   const [toast, setToast] = useState('');
+  const [showFloatingCapture, setShowFloatingCapture] = useState(false);
   const syncing = useRef(false);
+  const header = useRef<HTMLElement>(null);
+  const capture = useRef<HTMLDivElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const syncDialog = useRef<HTMLDialogElement>(null);
+  const deleteDialog = useRef<HTMLDialogElement>(null);
+  const noteToDelete = useRef<LocalNote | null>(null);
+  const closeMenu = useCallback(() => setMenu(undefined), []);
+  const showMenu = (note: LocalNote, event: React.MouseEvent<HTMLButtonElement>) => {
+    setMenu({ note, x: event.clientX, y: event.clientY, origin: event.currentTarget });
+  };
+  const confirmDelete = (note: LocalNote) => {
+    noteToDelete.current = note;
+    deleteDialog.current?.showModal();
+  };
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const notify = useCallback((message: string) => {
@@ -96,6 +111,18 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
     return () => document.removeEventListener('keydown', keydown);
   }, []);
 
+  useEffect(() => {
+    const update = () => {
+      if (header.current && capture.current) {
+        setShowFloatingCapture(capture.current.getBoundingClientRect().bottom <= header.current.getBoundingClientRect().bottom);
+      }
+    };
+    update();
+    addEventListener('scroll', update, { passive: true });
+    addEventListener('resize', update);
+    return () => { removeEventListener('scroll', update); removeEventListener('resize', update); };
+  }, []);
+
   const filtered = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return notes.filter(note => [note.title, note.body, ...note.images.map(image => image.alt)].join(' ').toLocaleLowerCase().includes(normalized));
@@ -155,19 +182,21 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
   const status = syncStatus(syncState, pending);
   return <>
     <a href="#main" {...stylex.props(styles.skipLink)}>Skip to notes</a>
-    <header {...stylex.props(styles.header)}><a href="/" aria-label="jot home" {...stylex.props(styles.brand)}><Brand/></a>
+    <header ref={header} {...stylex.props(styles.header)}><a href="/" aria-label="jot home" {...stylex.props(styles.brand)}><Brand/></a>
       <search {...stylex.props(styles.search)}><Icon name="search"/><input id="search" type="search" aria-label="Search notes" placeholder="Search your notes" value={query} onChange={event => setQuery(event.target.value)} {...stylex.props(styles.searchInput)}/><kbd {...stylex.props(styles.searchKey)}>/</kbd></search>
       <div {...stylex.props(styles.accountActions)}><button type="button" aria-label={status.label} onClick={() => syncDialog.current?.showModal()} {...stylex.props(styles.syncButton)}><Icon name={status.icon}/><span>{status.label}</span></button><button type="button" onClick={() => void logout()} {...stylex.props(styles.signOutButton)}>Sign out</button></div>
     </header>
     <main id="main" {...stylex.props(styles.workspace)}><section {...stylex.props(styles.pageHeading)}><h1 {...stylex.props(styles.h1)}>Your notes</h1></section>
-      <div {...stylex.props(styles.capture)}><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.captureText)}><Icon name="pen" {...stylex.props(styles.capturePencil)}/><span>Add a note</span></button><span {...stylex.props(styles.divider)}/><button type="button" onClick={() => imageInput.current?.click()} {...stylex.props(styles.imageCapture)}><Icon name="image"/><span>Add an image</span></button></div>
-      <nav aria-label="Create a note" {...stylex.props(styles.mobileCapture)}><button type="button" aria-label="Add an image" onClick={() => imageInput.current?.click()} {...stylex.props(styles.mobileButton)}><Icon name="image"/></button><span {...stylex.props(styles.mobileDivider)}/><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.mobileButton)}><Icon name="plus"/>New note</button></nav>
+      <div ref={capture} {...stylex.props(styles.capture)}><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.captureText)}><Icon name="pen" {...stylex.props(styles.capturePencil)}/><span>Add a note</span></button><span {...stylex.props(styles.divider)}/><button type="button" onClick={() => imageInput.current?.click()} {...stylex.props(styles.imageCapture)}><Icon name="image"/><span>Add an image</span></button></div>
+      <nav aria-label="Create a note" {...stylex.props(styles.mobileCapture, showFloatingCapture && styles.desktopFloatingCapture)}><button type="button" aria-label="Add an image" onClick={() => imageInput.current?.click()} {...stylex.props(styles.mobileButton)}><Icon name="image"/></button><span {...stylex.props(styles.mobileDivider)}/><button type="button" onClick={() => setEditor({})} {...stylex.props(styles.mobileButton)}><Icon name="plus"/>New note</button></nav>
       <div {...stylex.props(styles.toolbar)}><div {...stylex.props(styles.boardLabel)}>All notes <span {...stylex.props(styles.count)}>{filtered.length}</span></div></div>
-      {pinned.length > 0 && <NoteBoard notes={pinned} heading="Pinned" label="Pinned notes" onOpen={note => setEditor({ note })} onPin={pin} onReorder={reorder}/>}
-      {others.length > 0 && <div {...stylex.props(pinned.length > 0 && styles.sectionAfter)}><NoteBoard notes={others} heading={pinned.length ? 'Other notes' : undefined} label={pinned.length ? 'Other notes' : 'Notes'} onOpen={note => setEditor({ note })} onPin={pin} onReorder={reorder}/></div>}
+      {pinned.length > 0 && <NoteBoard notes={pinned} heading="Pinned" label="Pinned notes" onOpen={note => setEditor({ note })} onPin={pin} onContextMenu={showMenu} onReorder={reorder}/>}
+      {others.length > 0 && <div {...stylex.props(pinned.length > 0 && styles.sectionAfter)}><NoteBoard notes={others} heading={pinned.length ? 'Other notes' : undefined} label={pinned.length ? 'Other notes' : 'Notes'} onOpen={note => setEditor({ note })} onPin={pin} onContextMenu={showMenu} onReorder={reorder}/></div>}
       {filtered.length === 0 && <section {...stylex.props(styles.empty)}><Icon name="search" width={40}/><h2>Nothing here just yet.</h2><p>{query ? 'Try another search, or make a little note.' : 'Make a little note whenever you’re ready.'}</p>{query && <button type="button" onClick={() => setQuery('')} {...stylex.props(styles.secondary)}>Clear search</button>}</section>}
     </main>
     <input ref={imageInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden onChange={event => { chooseImages(event.target.files); event.target.value = ''; }}/>
+    {menu && <NoteContextMenu target={menu} onClose={closeMenu} onOpen={note => setEditor({ note })} onPin={pin} onDelete={confirmDelete}/>}
+    <ConfirmDialog ref={deleteDialog} title="Delete this note?" copy="This is permanent. There’s no trash to come back to." cancel="Keep note" confirm="Delete note" onConfirm={() => { if (noteToDelete.current) return remove(noteToDelete.current); }}/>
     {editor && <Editor note={editor.note} initialImages={editor.files} onSave={save} onDelete={remove} onClose={closeEditor}/>}
     <dialog ref={syncDialog} aria-labelledby="sync-title" {...stylex.props(styles.dialog, styles.smallDialog)}><Icon name={status.icon} width={32}/><h2 id="sync-title" {...stylex.props(styles.dialogTitle)}>{status.label}</h2><p {...stylex.props(styles.dialogCopy)}>{status.copy}</p><div {...stylex.props(styles.dialogActions)}><button type="button" onClick={() => syncDialog.current?.close()} {...stylex.props(styles.secondary)}>Back</button><button type="button" onClick={() => { syncDialog.current?.close(); void synchronize(); }} {...stylex.props(styles.primary)}>Sync now</button></div></dialog>
     {toast && <div role="status" {...stylex.props(styles.toast)}>{toast}</div>}

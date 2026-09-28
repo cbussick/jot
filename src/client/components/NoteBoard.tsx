@@ -6,9 +6,10 @@ import { styles } from '../app.stylex';
 import { Icon } from './Icon';
 import { ImageMosaic } from './ImageMosaic';
 
-export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
+export function NoteBoard({ notes, heading, label, onOpen, onPin, onContextMenu, onReorder }: {
   notes: LocalNote[]; heading?: string; label: string;
   onOpen: (note: LocalNote) => void; onPin: (note: LocalNote) => void;
+  onContextMenu: (note: LocalNote, event: React.MouseEvent<HTMLButtonElement>) => void;
   onReorder: (source: string, target: string) => void;
 }) {
   const board = useRef<HTMLUListElement>(null);
@@ -136,7 +137,7 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
   return <section {...stylex.props(styles.section)}>
     {heading && <h2 {...stylex.props(styles.sectionHeading)}>{heading}</h2>}
     <ul ref={board} aria-label={label} {...stylex.props(styles.board)}>
-      {displayed.map((note) => <NoteCard key={note.id} note={note} onPin={onPin} dropTarget={placement?.source === note.id}
+      {displayed.map((note) => <NoteCard key={note.id} note={note} onPin={onPin} onContextMenu={onContextMenu} dropTarget={placement?.source === note.id}
         onPointerDown={event => start(event, note.id)}
         onCardClick={() => { if (suppressClick.current === note.id) { suppressClick.current = undefined; return; } onOpen(note); }}
         onKeyDown={event => {
@@ -150,14 +151,14 @@ export function NoteBoard({ notes, heading, label, onOpen, onPin, onReorder }: {
   </section>;
 }
 
-function NoteCard({ note, onCardClick, onPin, dropTarget, onPointerDown, onKeyDown }: {
-  note: LocalNote; onCardClick: () => void; onPin: (note: LocalNote) => void; dropTarget: boolean;
+function NoteCard({ note, onCardClick, onPin, onContextMenu, dropTarget, onPointerDown, onKeyDown }: {
+  note: LocalNote; onCardClick: () => void; onPin: (note: LocalNote) => void; onContextMenu: (note: LocalNote, event: React.MouseEvent<HTMLButtonElement>) => void; dropTarget: boolean;
   onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   const image = note.images[0];
   return <li data-item-id={note.id} {...stylex.props(styles.noteItem, dropTarget && styles.dropTarget)}>
-    <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} title="Drag to reorder · arrow keys to move" onClick={onCardClick} onPointerDown={onPointerDown} onContextMenu={event => event.preventDefault()} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>
+    <button type="button" data-note-id={note.id} aria-label={`Open note: ${note.title || note.body || image?.alt || 'Image note'}`} title="Drag to reorder · arrow keys to move" onClick={onCardClick} onPointerDown={onPointerDown} onContextMenu={event => { event.preventDefault(); onContextMenu(note, event); }} onDragStart={event => event.preventDefault()} onKeyDown={onKeyDown} {...stylex.props(styles.noteCard, styles[note.color], dropTarget && styles.dragPlaceholder)}>
       {note.images.length === 1 && <LocalPhoto image={image}/>}
       {note.images.length > 1 && <ImageMosaic images={note.images.map(item => <LocalPhoto key={item.id} image={item} className={stylex.props(styles.mosaicPhoto).className}/>)}/>}
       <span {...stylex.props(styles.noteContent, image && styles.imageContent)}>
