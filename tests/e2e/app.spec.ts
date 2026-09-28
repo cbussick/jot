@@ -275,6 +275,59 @@ test('accepts an image and keeps the editor textarea fixed', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
 });
 
+test('pastes clipboard images into new and existing notes without disrupting text paste', async ({ page, context }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Add a note' }).click();
+  const body = page.getByRole('textbox', { name: 'Note', exact: true });
+  await body.focus();
+  const textPasteAllowed = await body.evaluate(element => {
+    const clipboard = new DataTransfer();
+    clipboard.setData('text/plain', 'Pasted words');
+    return element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: clipboard }));
+  });
+  expect(textPasteAllowed).toBe(true);
+  // Text-only paste remains the browser's normal behavior (a synthetic event does not insert text).
+  await body.fill('A note with a picture');
+  const jpeg = await readFile('tests/fixtures/image.jpg');
+  const pasteImage = async (type = 'image/jpeg') => body.evaluate((element, { bytes, type }) => {
+    const clipboard = new DataTransfer();
+    clipboard.items.add(new File([new Uint8Array(bytes)], 'clipboard.jpg', { type }));
+    clipboard.setData('text/plain', 'Do not insert this caption');
+    return element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: clipboard }));
+  }, { bytes: [...jpeg], type });
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(async bytes => {
+    const image = new Image();
+    const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' }));
+    try {
+      image.src = url;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width; canvas.height = image.height;
+      canvas.getContext('2d')!.drawImage(image, 0, 0);
+      const png = await new Promise<Blob>(resolve => canvas.toBlob(blob => resolve(blob!), 'image/png'));
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+    } finally { URL.revokeObjectURL(url); }
+  }, [...jpeg]);
+  await body.press('ControlOrMeta+v');
+  await expect(body).toHaveValue('A note with a picture');
+  await expect(page.getByRole('button', { name: 'View image 1' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Open note: A note with a picture' }).click();
+  await body.focus();
+  expect(await pasteImage()).toBe(false);
+  await expect(page.getByRole('button', { name: 'View image 2' })).toBeVisible();
+  for (let index = 3; index <= 6; index++) expect(await pasteImage()).toBe(false);
+  await expect(page.getByText('2 more images')).toBeVisible();
+  expect(await pasteImage()).toBe(false);
+  await expect(page.getByRole('alert')).toContainText('Up to 6 images per note.');
+  await page.getByRole('button', { name: 'Close note' }).click();
+  await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Open note: A note with a picture' }).click();
+  await expect(page.getByRole('dialog', { name: 'Edit note' }).getByText('2 more images')).toBeVisible();
+});
+
 test('closes notes from the footer or backdrop, and keeps destructive actions in the header', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Add a note' }).click();
