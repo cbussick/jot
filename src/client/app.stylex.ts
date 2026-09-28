@@ -52,7 +52,7 @@ export const styles = stylex.create({
   mosaicOpen: { display: 'block', width: '100%', height: '100%', padding: 0, ':focus-visible': { outline: `3px solid ${colors.green}`, outlineOffset: -3 } },
   mosaicMore: { position: 'absolute', right: 6, bottom: 6, display: 'flex', alignItems: 'center', gap: 5, padding: '5px 7px', borderRadius: 6, backgroundColor: '#263630e0', color: '#fff', fontSize: 11, lineHeight: 1.2, pointerEvents: 'none', '@media (max-width: 700px)': { right: 3, bottom: 3, padding: 4, gap: 3, fontSize: 10 } },
   pin: { position: 'absolute', right: 6, top: 4, width: 44, height: 44, display: 'grid', placeItems: 'center', borderRadius: 8, color: colors.muted, backgroundColor: '#ffffffc9', ':hover': { backgroundColor: '#e6ebe8' } },
-  pinHiddenDesktop: { '@media (hover: hover) and (pointer: fine)': { opacity: 'var(--pin-opacity)' }, ':focus-visible': { opacity: 1 } },
+  pinVisibility: { '@media (hover: none)': { display: 'none' }, '@media (hover: hover) and (pointer: fine)': { opacity: 'var(--pin-opacity)' }, ':focus-visible': { opacity: 1 } },
   pinned: { color: colors.green },
   contextMenu: { position: 'fixed', zIndex: 40, width: 176, padding: 6, border: `1px solid ${colors.line}`, borderRadius: 10, backgroundColor: '#fff', boxShadow: '0 12px 32px #18251e30' },
   contextMenuItem: { display: 'block', width: '100%', minHeight: 40, paddingInline: 12, textAlign: 'left', borderRadius: 6, fontSize: 13, color: colors.ink, ':hover': { backgroundColor: '#edf0ee' }, ':focus-visible': { outline: `2px solid ${colors.green}`, outlineOffset: -2 } },

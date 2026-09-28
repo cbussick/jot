@@ -239,6 +239,30 @@ test('pins from the board and shows pin controls on hover for both groups', asyn
   await expect(page.getByRole('dialog', { name: 'Edit note' })).not.toBeVisible();
 });
 
+test.describe('touch note pins', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+  test('hides board pins and lets a note be pinned after opening it', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'New note' }).tap();
+    await page.getByRole('textbox', { name: 'Title' }).fill('Mobile pin test');
+    await page.getByRole('button', { name: 'Close note' }).tap();
+
+    const card = page.getByRole('button', { name: 'Open note: Mobile pin test' });
+    const boardPin = page.getByRole('button', { name: 'Pin note: Mobile pin test', includeHidden: true });
+    await expect(boardPin).toBeHidden();
+    await card.tap();
+    const editor = page.getByRole('dialog', { name: 'Edit note' });
+    const editorPin = editor.getByRole('button', { name: 'Pin note' });
+    await expect(editorPin).toBeVisible();
+    await editorPin.tap();
+    await expect(editor.getByRole('button', { name: 'Unpin note' })).toHaveAttribute('aria-pressed', 'true');
+    await editor.getByRole('button', { name: 'Close note' }).tap();
+    await expect(page.getByRole('heading', { name: 'Pinned', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Unpin note: Mobile pin test', includeHidden: true })).toBeHidden();
+  });
+});
+
 test('right-click note actions open, pin, and confirm deletion', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New note' }).click();
