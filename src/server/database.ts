@@ -7,7 +7,7 @@ export type AppDatabase = Database.Database;
 
 export function openDatabase(environment: Environment): AppDatabase {
   mkdirSync(environment.DATA_DIR, { recursive: true, mode: 0o700 });
-  const database = new Database(join(environment.DATA_DIR, 'jot.sqlite'));
+  const database = new Database(join(environment.DATA_DIR, 'shelf.sqlite'));
   database.pragma('journal_mode = WAL');
   database.pragma('foreign_keys = ON');
   database.pragma('busy_timeout = 5000');

@@ -5,8 +5,8 @@ import type { NextFunction, Request, Response } from 'express';
 import type { AppDatabase } from './database.js';
 import type { Environment } from '../shared/contracts.js';
 
-const DEVELOPMENT_COOKIE = 'jot_session';
-const PRODUCTION_COOKIE = '__Host-jot_session';
+const DEVELOPMENT_COOKIE = 'shelf_session';
+const PRODUCTION_COOKIE = '__Host-shelf_session';
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 
 export function hasOwner(database: AppDatabase): boolean {

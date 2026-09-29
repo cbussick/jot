@@ -15,7 +15,7 @@ const parseOptionalNote = (value: unknown) => value === undefined ? undefined : 
 const parseOptionalOperation = (value: unknown) => value === undefined ? undefined : parseOperation(value);
 const parseBlob = (value: unknown) => z.instanceof(Blob).parse(value);
 
-const databasePromise = openDB('jot', 1, {
+const databasePromise = openDB('shelf', 1, {
   upgrade(database) {
     database.createObjectStore('notes', { keyPath: 'id' });
     database.createObjectStore('outbox', { keyPath: 'noteId' });

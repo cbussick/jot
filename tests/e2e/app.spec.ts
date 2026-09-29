@@ -46,6 +46,16 @@ test('creates, edits, pins, searches, and deletes a note', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Open note: Image note' })).not.toBeVisible();
 });
 
+test('uses Shelf browser storage and install metadata', async ({ page, request }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Your notes' })).toBeVisible();
+  const databases = await page.evaluate(async () => (await indexedDB.databases()).map(database => database.name));
+  expect(databases).toContain('shelf');
+  expect(databases).not.toContain('jot');
+  const manifest = await (await request.get('/manifest.webmanifest')).json();
+  expect(manifest).toMatchObject({ name: 'Shelf', short_name: 'Shelf', start_url: '/', scope: '/' });
+});
+
 test('focuses the body when creating a note', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New note' }).click();
