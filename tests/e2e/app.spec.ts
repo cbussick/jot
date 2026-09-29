@@ -56,6 +56,32 @@ test('uses Shelf browser storage and install metadata', async ({ page, request }
   expect(manifest).toMatchObject({ name: 'Shelf', short_name: 'Shelf', start_url: '/', scope: '/' });
 });
 
+test('note editor uses available desktop space and stays usable on small screens', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New note' }).click();
+  const editor = page.getByRole('dialog', { name: 'Add note' });
+  const body = editor.getByRole('textbox', { name: 'Note', exact: true });
+  const desktop = await editor.boundingBox();
+  const desktopBody = await body.boundingBox();
+  expect(desktop?.width).toBeGreaterThanOrEqual(900);
+  expect(desktop?.height).toBeGreaterThanOrEqual(750);
+  expect(desktopBody?.height).toBeGreaterThanOrEqual(550);
+
+  await page.setViewportSize({ width: 800, height: 500 });
+  const compact = await editor.boundingBox();
+  expect(compact?.width).toBeLessThan(800);
+  expect(compact?.height).toBeLessThanOrEqual(450);
+  await expect(editor.getByRole('button', { name: 'Close', exact: true })).toBeInViewport();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobile = await editor.boundingBox();
+  expect(mobile?.width).toBe(390);
+  expect(mobile?.height).toBe(844);
+  await expect(body).toBeInViewport();
+  await expect(editor.getByRole('button', { name: 'Close', exact: true })).toBeInViewport();
+});
+
 test('focuses the body when creating a note', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New note' }).click();
