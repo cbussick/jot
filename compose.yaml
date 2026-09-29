@@ -1,5 +1,7 @@
+name: shelf
+
 services:
-  jot:
+  shelf:
     build: .
     restart: unless-stopped
     environment:
@@ -10,10 +12,10 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
-      - jot-data:/data
+      - shelf-data:/data
     security_opt:
       - no-new-privileges:true
 
 volumes:
-  jot-data:
-    name: jot-data
+  shelf-data:
+    name: shelf-data

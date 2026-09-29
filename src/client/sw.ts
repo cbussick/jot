@@ -16,7 +16,7 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html'), {
 registerRoute(
   ({ url }) => url.origin === worker.location.origin && url.pathname.startsWith('/api/images/'),
   new CacheFirst({
-    cacheName: 'jot-images',
+    cacheName: 'shelf-images',
     plugins: [
       new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 30 * 24 * 60 * 60 }),
       new CacheableResponsePlugin({ statuses: [200] }),

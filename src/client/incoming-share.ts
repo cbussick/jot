@@ -2,7 +2,7 @@ import { openDB } from 'idb';
 
 // Separate from the notes database so the service worker can stage a share without
 // opening (or upgrading) the notes database before the app has authenticated.
-const shares = openDB('jot-incoming-shares', 1, {
+const shares = openDB('shelf-incoming-shares', 1, {
   upgrade(database) { database.createObjectStore('shares'); },
 });
 const lifetime = 24 * 60 * 60 * 1000;

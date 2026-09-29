@@ -68,25 +68,60 @@ The first visit creates the only owner account. There are no default credentials
 
 ## Persistent data and backups
 
-The existing `jot-data` Docker volume contains:
+The `shelf-data` Docker volume contains:
 
 ```text
-/data/jot.sqlite
-/data/jot.sqlite-wal
-/data/jot.sqlite-shm
+/data/shelf.sqlite
+/data/shelf.sqlite-wal
+/data/shelf.sqlite-shm
 /data/images/
 ```
 
-The volume, database filename, browser storage, cookie, and Compose service retain their original internal identifiers so upgrading an existing installation does not lose notes, offline changes, or sessions. Back up the database and image directory together. The safest simple procedure is:
+Back up the database and image directory together. The safest simple procedure is:
 
 ```bash
-docker compose stop jot
-docker run --rm -v jot-data:/data -v "$PWD/backups:/backup" \
+mkdir -p backups
+docker compose stop shelf
+docker run --rm -v shelf-data:/data:ro -v "$PWD/backups:/backup" \
   alpine tar czf "/backup/shelf-$(date +%F-%H%M%S).tar.gz" -C /data .
-docker compose start jot
+docker compose start shelf
 ```
 
 Test restoring backups periodically. Browser storage is a convenience for offline work, not a backup.
+
+### One-time migration from jot
+
+Do this once before starting this release against an existing deployment. The live installation used Compose project `sticky-notes-app`, service `jot`, and volume `jot-data`. **Do not start the new service with an empty volume**: it would prompt to set up a new owner. Unsynced edits and incoming share drafts in browsers are not migrated; open the old app on each device and wait for **Synced** first if they matter. Devices must sign in again after the cookie rename.
+
+```bash
+# On the server, confirm the source exists before Docker can create an empty one.
+docker volume inspect jot-data
+# Stop the old container to checkpoint SQLite and free port 3000.
+docker stop sticky-notes-app-jot-1
+mkdir -p "$HOME/backups/shelf"
+docker run --rm -v jot-data:/data:ro -v "$HOME/backups/shelf:/backup" \
+  alpine tar czf "/backup/pre-migration-$(date -u +%Y%m%dT%H%M%SZ).tar.gz" -C /data .
+
+# Copy the old volume, preserving file ownership. Rename the database and any
+# SQLite sidecars together. The old volume and stopped container are rollback points.
+docker volume create shelf-data
+docker run --rm -v jot-data:/old:ro -v shelf-data:/new alpine sh -ec '
+  test -s /old/jot.sqlite
+  cp -a /old/. /new/
+  for path in /new/jot.sqlite*; do
+    [ -e "$path" ] || continue
+    mv "$path" "/new/shelf.sqlite${path#/new/jot.sqlite}"
+  done
+  test -s /new/shelf.sqlite
+'
+
+docker compose up -d --build
+# Confirm `docker compose ps` is healthy and that your notes and images load.
+# Once verified, remove the stopped old container; retain jot-data for rollback.
+docker rm sticky-notes-app-jot-1
+```
+
+The new Compose project, service, and volume are all named `shelf`. The PWA keeps the same URL and scope; installed copies still receive update prompts. If the cutover fails, stop `shelf` (`docker compose stop shelf`) and restart the old container (`docker start sticky-notes-app-jot-1`) before removing it.
 
 ## Updates
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rename, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request, { type Agent } from 'supertest';
@@ -33,6 +33,7 @@ describe('authentication gates', () => {
     expect((await agent.get('/api/auth/status')).body).toEqual({ authenticated: false, setupRequired: true });
     expect((await agent.post('/api/auth/setup').send({ password: 'short' })).status).toBe(400);
     const setupResponse = await agent.post('/api/auth/setup').send({ password });
+    expect(setupResponse.headers['set-cookie'][0]).toContain('shelf_session=');
     expect(setupResponse.headers['set-cookie'][0]).toContain('HttpOnly');
     expect(setupResponse.headers['set-cookie'][0]).toContain('SameSite=Strict');
     expect(database.prepare('SELECT password_hash FROM owner').get()).not.toMatchObject({ password_hash: password });
@@ -56,6 +57,23 @@ describe('authentication gates', () => {
       .send({ password: 'short' });
     expect(response.status).toBe(400);
     expect(response.body.error).not.toBe('Request origin is not allowed.');
+  });
+});
+
+describe('storage', () => {
+  it('keeps owner and notes when a stopped database is moved to the Shelf filename', async () => {
+    await setup();
+    const id = crypto.randomUUID();
+    expect((await agent.put(`/api/notes/${id}`).field('payload', JSON.stringify({
+      id, title: 'Existing note', body: 'Still here', color: 'paper', pinned: false, expectedVersion: 0, retainedImageIds: [],
+    }))).status).toBe(201);
+    database.close();
+    await rename(join(directory, 'shelf.sqlite'), join(directory, 'jot.sqlite'));
+    await rename(join(directory, 'jot.sqlite'), join(directory, 'shelf.sqlite'));
+    database = openDatabase({ NODE_ENV: 'test', PORT: 3000, DATA_DIR: directory, SESSION_DAYS: 30 });
+    expect(database.prepare('SELECT count(*) AS count FROM owner').get()).toEqual({ count: 1 });
+    expect(database.prepare('SELECT title FROM notes WHERE id = ?').get(id)).toEqual({ title: 'Existing note' });
+    expect(await readdir(directory)).not.toContain('jot.sqlite');
   });
 });
 
