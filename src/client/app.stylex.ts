@@ -95,7 +95,6 @@ export const styles = stylex.create({
   previewPrevious: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 8, backgroundColor: '#ffffff24', color: '#fff', fontSize: 32, ':hover': { backgroundColor: '#ffffff40' } },
   previewNext: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 8, backgroundColor: '#ffffff24', color: '#fff', fontSize: 32, ':hover': { backgroundColor: '#ffffff40' } },
   previewCount: { position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', color: '#fff', fontSize: 13 },
-  imageRemove: { position: 'absolute', right: 5, top: 5, backgroundColor: '#fff', color: colors.danger, borderRadius: 8, width: 44, height: 44, display: 'grid', placeItems: 'center', boxShadow: '0 1px 5px #0003' },
   editorFooter: { padding: '14px 18px', borderTop: '1px solid #26363012', display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', '@media (max-width: 700px)': { padding: 12, gap: 6 } },
   tools: { display: 'flex', alignItems: 'center', gap: 8 },
   colorPickerAnchor: { position: 'relative' },
