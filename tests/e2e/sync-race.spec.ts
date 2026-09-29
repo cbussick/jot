@@ -10,7 +10,8 @@ test('rapid image edits do not generate a conflict copy', async ({ page }) => {
   await page.getByRole('button', { name: 'Close note' }).click();
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: `Open note: ${title}`, exact: true }).click();
-  await page.getByRole('button', { name: 'Remove image 1' }).click();
+  await page.getByRole('button', { name: 'View image 1' }).click();
+  await page.getByRole('dialog', { name: 'Image preview' }).getByRole('button', { name: 'Remove image 1' }).click();
   await page.getByRole('dialog', { name: 'Remove this image?' }).getByRole('button', { name: 'Remove image' }).click();
   await page.getByRole('button', { name: 'Close note' }).click();
   await expect(page.getByRole('dialog', { name: 'Edit note' })).not.toBeVisible();

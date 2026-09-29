@@ -116,9 +116,8 @@ export function Editor({ note, initialImages = [], onSave, onDelete, onClose }: 
         </header>
         {gallery.length === 1 && <div {...stylex.props(styles.editorImages)}><div {...stylex.props(styles.editorImage, styles.editorImageCentered, styles.editorImageEnd)}>
           <button type="button" aria-label="View image 1" onClick={() => setPreviewIndex(0)} {...stylex.props(styles.photoButton)}>{'image' in gallery[0] ? <LocalPhoto image={gallery[0].image} className={stylex.props(styles.editorPhoto).className}/> : <img src={gallery[0].src} alt={gallery[0].alt} {...stylex.props(styles.editorPhoto)}/>}</button>
-          <button type="button" aria-label="Remove image 1" onClick={() => requestImageRemoval(gallery[0].removal)} {...stylex.props(styles.imageRemove)}><Icon name="trash" width={18}/></button>
         </div></div>}
-        {gallery.length > 1 && <ImageMosaic editor images={gallery.map(item => 'image' in item ? <LocalPhoto key={item.image.id} image={item.image} className={stylex.props(styles.mosaicPhoto).className}/> : <img key={item.src} src={item.src} alt={item.alt} {...stylex.props(styles.mosaicPhoto)}/>)} onOpen={setPreviewIndex} onRemove={index => requestImageRemoval(gallery[index].removal)}/>}
+        {gallery.length > 1 && <ImageMosaic editor images={gallery.map(item => 'image' in item ? <LocalPhoto key={item.image.id} image={item.image} className={stylex.props(styles.mosaicPhoto).className}/> : <img key={item.src} src={item.src} alt={item.alt} {...stylex.props(styles.mosaicPhoto)}/>)} onOpen={setPreviewIndex}/>}
         <div {...stylex.props(styles.editorFields)}>
           <label className="sr-only" htmlFor="note-title">Title</label><input id="note-title" maxLength={160} placeholder="Title" value={title} onChange={event => setTitle(event.target.value)} {...stylex.props(styles.titleInput)}/>
           <label className="sr-only" htmlFor="note-body">Note</label><textarea ref={bodyInput} id="note-body" maxLength={20_000} placeholder="Start anywhere…" value={body} onChange={event => setBody(event.target.value)} {...stylex.props(styles.bodyInput)}/>
