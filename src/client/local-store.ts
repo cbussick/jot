@@ -105,10 +105,11 @@ export async function deleteLocalNote(note: LocalNote): Promise<void> {
   await removeBlobs(note);
 }
 
-export async function syncNotes(): Promise<{ notes: LocalNote[]; pending: number; conflict: boolean }> {
+export async function syncNotes(): Promise<{ notes: LocalNote[]; pending: number; conflict: boolean; connection: 'connected' | 'offline' | 'unauthorized' }> {
   const database = await databasePromise;
   const entries = z.array(outboxSchema).parse(await database.getAll('outbox')) as OutboxEntry[];
   let conflict = false;
+  let connection: 'connected' | 'offline' | 'unauthorized' = 'connected';
   for (const entry of entries) {
     const note = parseOptionalNote(await database.get('notes', entry.noteId));
     try {
@@ -167,7 +168,10 @@ export async function syncNotes(): Promise<{ notes: LocalNote[]; pending: number
         await database.delete('outbox', entry.noteId);
         continue;
       }
-      if (error instanceof ApiError && (error.status === 0 || error.status === 401)) break;
+      if (error instanceof ApiError && (error.status === 0 || error.status === 401)) {
+        connection = error.status === 0 ? 'offline' : 'unauthorized';
+        break;
+      }
       throw error;
     }
   }
@@ -201,8 +205,9 @@ export async function syncNotes(): Promise<{ notes: LocalNote[]; pending: number
     await transaction.done;
   } catch (error) {
     if (!(error instanceof ApiError && (error.status === 0 || error.status === 401))) throw error;
+    connection = error.status === 0 ? 'offline' : 'unauthorized';
   }
-  return { notes: await localNotes(), pending: (await database.count('outbox')) + Number(Boolean(await database.get('meta', 'pendingOrder'))), conflict };
+  return { notes: await localNotes(), pending: (await database.count('outbox')) + Number(Boolean(await database.get('meta', 'pendingOrder'))), conflict, connection };
 }
 
 export async function imageSource(image: LocalImage): Promise<string> {
