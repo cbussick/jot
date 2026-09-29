@@ -64,7 +64,7 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
           const result = await syncNotes();
           if (!syncRequested.current) {
             setNotes(result.notes); setPending(result.pending);
-            setSyncState(result.pending ? 'local' : navigator.onLine ? 'synced' : 'offline');
+            setSyncState(result.connection === 'offline' || !navigator.onLine ? 'offline' : result.connection === 'unauthorized' ? 'error' : result.pending ? 'local' : 'synced');
           }
           if (result.conflict) notify('Both versions were kept after a conflicting edit.');
         } catch (error) {
@@ -77,11 +77,12 @@ function NotesApp({ offlineEntry, onLogout }: { offlineEntry: boolean; onLogout:
   useEffect(() => {
     void localNotes().then(setNotes).then(synchronize);
     const online = () => void synchronize();
+    const offline = () => setSyncState('offline');
     const visible = () => { if (document.visibilityState === 'visible') void synchronize(); };
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void synchronize(); }, 15_000);
-    addEventListener('online', online); document.addEventListener('visibilitychange', visible);
+    addEventListener('online', online); addEventListener('offline', offline); document.addEventListener('visibilitychange', visible);
     void navigator.storage?.persist?.();
-    return () => { clearInterval(interval); removeEventListener('online', online); document.removeEventListener('visibilitychange', visible); };
+    return () => { clearInterval(interval); removeEventListener('online', online); removeEventListener('offline', offline); document.removeEventListener('visibilitychange', visible); };
   }, [synchronize]);
 
   useEffect(() => {
