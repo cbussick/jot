@@ -488,6 +488,31 @@ test('accepts an image and keeps the editor textarea fixed', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Synced' })).toBeVisible({ timeout: 10_000 });
 });
 
+test('a note image fits without horizontal scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Add an image' }).click();
+  await page.locator('input[type=file]').last().setInputFiles('tests/fixtures/image.jpg');
+
+  const editor = page.getByRole('dialog', { name: 'Add note' });
+  const image = editor.getByRole('button', { name: 'View image 1' }).locator('img');
+  await expect(image).toBeVisible();
+  for (const width of [390, 598, 900]) {
+    await page.setViewportSize({ width, height: 844 });
+    const dimensions = await image.evaluate(element => {
+      const container = element.closest('div')!.parentElement!;
+      return {
+        scrollWidth: container.scrollWidth,
+        clientWidth: container.clientWidth,
+        imageWidth: element.getBoundingClientRect().width,
+        availableWidth: container.clientWidth - 60,
+      };
+    });
+    expect(dimensions.scrollWidth).toBe(dimensions.clientWidth);
+    expect(dimensions.imageWidth).toBeLessThanOrEqual(dimensions.availableWidth);
+  }
+});
+
 test('image-only cards have no empty content section', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Add an image' }).click();
